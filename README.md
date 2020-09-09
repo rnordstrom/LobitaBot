@@ -1,0 +1,2 @@
+# LobitaBot
+LobitaBot for Discord.
