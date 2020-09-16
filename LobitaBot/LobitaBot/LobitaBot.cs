@@ -21,19 +21,13 @@ namespace LobitaBot
             client.Log += Log;
             cmdService.Log += Log;
 
-            Console.WriteLine("Installing command handler...");
-
             CommandHandler cmdHandler = new CommandHandler(client, cmdService);
             await cmdHandler.InstallCommandsAsync();
 
             var token = Environment.GetEnvironmentVariable("token");
 
-            Console.WriteLine("Preparing to log in...");
-
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
-
-            Console.WriteLine("Started successfully!");
 
             await Task.Delay(-1);
         }
