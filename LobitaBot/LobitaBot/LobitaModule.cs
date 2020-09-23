@@ -1,4 +1,5 @@
-﻿using Discord.Commands;
+﻿using Discord;
+using Discord.Commands;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -7,8 +8,12 @@ namespace LobitaBot
 {
     public class LobitaModule : ModuleBase<SocketCommandContext>
     {
-        private string dataDirectory = Path.Join(Directory.GetCurrentDirectory(), "data");
-        private string[] cmdHandles = new string[] 
+        string baseAddress = Environment.GetEnvironmentVariable("PUBLIC_IP");
+        string workingDirectory = Directory.GetCurrentDirectory();
+        private string imagesDirectory = "images";
+        private string videosDirectory = "videos";
+        string footerText = "Powered by LobitaBot.";
+        private string[] imageHandles = new string[] 
         {
             "lysithea",
             "holo",
@@ -18,23 +23,28 @@ namespace LobitaBot
             "nagatoro",
             "velvet"
         };
-
-        private string ChooseImgPath(string cmdHandle)
+        private string[] videoHandles = new string[]
         {
-            DirectoryInfo di = new DirectoryInfo(Path.Join(dataDirectory, cmdHandle));
-            FileInfo[] fileInfos = di.GetFiles();
-            Random rand = new Random();
-            int chosen = rand.Next(0, fileInfos.Length - 1);
+            "OP",
+            "ED"
+        };
 
-            return Path.Join(di.FullName, fileInfos[chosen].Name);
+        private string BuildLink(string directory, string cmdHandle)
+        {
+            DirectoryInfo di = new DirectoryInfo(Path.Join(workingDirectory, directory, cmdHandle));
+            FileInfo[] files = di.GetFiles();
+            Random rand = new Random();
+            int chosen = rand.Next(0, files.Length - 1);
+
+            return $"http://{baseAddress}/{directory}/{cmdHandle}/{files[chosen].Name}";
         }
 
-        private string ChooseImgPath()
+        private string BuildRandomImageLink()
         {
             Random rand = new Random();
-            int chosenDir = rand.Next(0, cmdHandles.Length - 1);
+            int chosenDir = rand.Next(0, imageHandles.Length - 1);
 
-            return ChooseImgPath(cmdHandles[chosenDir]);
+            return BuildLink(imagesDirectory, imageHandles[chosenDir]);
         }
 
         [Command("help")]
@@ -58,72 +68,200 @@ namespace LobitaBot
         [Summary("Displays a random image of Lysithea.")]
         public async Task LysitheaAsync()
         {
-            string path = ChooseImgPath(cmdHandles[0]);
+            string path = BuildLink(imagesDirectory, imageHandles[0]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Lysithea")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("holo")]
         [Summary("Displays a random image of Holo.")]
         public async Task HoloAsync()
         {
-            string path = ChooseImgPath(cmdHandles[1]);
+            string path = BuildLink(imagesDirectory, imageHandles[1]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Holo")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("fenrir")]
         [Summary("Displays a random image of Fenrir.")]
         public async Task FenrirAsync()
         {
-            string path = ChooseImgPath(cmdHandles[2]);
+            string path = BuildLink(imagesDirectory, imageHandles[2]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Fenrir")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("myuri")]
         [Summary("Displays a random image of Myuri.")]
         public async Task MyuriAsync()
         {
-            string path = ChooseImgPath(cmdHandles[3]);
+            string path = BuildLink(imagesDirectory, imageHandles[3]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Myuri")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("ryouko")]
         [Summary("Displays a random image of Ryouko.")]
         public async Task RyoukoAsync()
         {
-            string path = ChooseImgPath(cmdHandles[4]);
+            string path = BuildLink(imagesDirectory, imageHandles[4]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Ryouko")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("nagatoro")]
         [Summary("Displays a random image of Nagatoro.")]
         public async Task NagatoroAsync()
         {
-            string path = ChooseImgPath(cmdHandles[5]);
+            string path = BuildLink(imagesDirectory, imageHandles[5]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Nagatoro")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("velvet")]
         [Summary("Displays a random image of Velvet.")]
         public async Task VelvetAsync()
         {
-            string path = ChooseImgPath(cmdHandles[6]);
+            string path = BuildLink(imagesDirectory, imageHandles[6]);
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Velvet")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
 
         [Command("mita")]
         [Summary("Displays a random image of any character.")]
         public async Task MitaAsync()
         {
-            string path = ChooseImgPath();
+            string path = BuildRandomImageLink();
 
-            await Context.Channel.SendFileAsync(path);
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = path
+            };
+
+            embed.WithTitle("Okamita")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
+        }
+
+        [Command("op")]
+        [Summary("Displays a random anime opening theme.")]
+        public async Task OpAsync()
+        {
+            string path = BuildLink(videosDirectory, videoHandles[0]);
+
+            var embed = new EmbedBuilder()
+            {
+                Url = path
+            };
+
+            embed.WithTitle("OP")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
+        }
+
+        [Command("ed")]
+        [Summary("Displays a random anime opening theme.")]
+        public async Task EdAsync()
+        {
+            string path = BuildLink(videosDirectory, videoHandles[1]);
+
+            var embed = new EmbedBuilder()
+            {
+                Url = path
+            };
+
+            embed.WithTitle("ED")
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
         }
     }
 }
