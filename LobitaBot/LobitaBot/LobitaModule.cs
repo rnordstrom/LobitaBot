@@ -13,6 +13,7 @@ namespace LobitaBot
         private string imagesDirectory = "images";
         private string videosDirectory = "videos";
         string footerText = "Powered by LobitaBot.";
+        string titleText = "Click here to play video...";
         private string[] imageHandles = new string[] 
         {
             "lysithea",
@@ -36,7 +37,7 @@ namespace LobitaBot
             Random rand = new Random();
             int chosen = rand.Next(0, files.Length - 1);
 
-            return $"http://{baseAddress}/{directory}/{cmdHandle}/{files[chosen].Name}";
+            return $"http://{baseAddress}/{directory}/{cmdHandle}/{files[chosen].Name}" + GenerateUniqueParam();
         }
 
         private string BuildRandomImageLink()
@@ -45,6 +46,11 @@ namespace LobitaBot
             int chosenDir = rand.Next(0, imageHandles.Length - 1);
 
             return BuildLink(imagesDirectory, imageHandles[chosenDir]);
+        }
+
+        private string GenerateUniqueParam()
+        {
+            return $"?_={DateTime.Now.Millisecond}";
         }
 
         [Command("help")]
@@ -232,13 +238,14 @@ namespace LobitaBot
 
             var embed = new EmbedBuilder()
             {
-                Url = path
+                Url = path,
+                ImageUrl = $"http://{baseAddress}/images/OP_img.png" + GenerateUniqueParam()
             };
 
-            embed.WithTitle("OP")
+            embed.WithTitle(titleText)
                 .WithAuthor(Context.Client.CurrentUser)
                 .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
+                .WithColor(Color.DarkRed)
                 .WithCurrentTimestamp();
 
             await ReplyAsync(embed: embed.Build());
@@ -252,13 +259,14 @@ namespace LobitaBot
 
             var embed = new EmbedBuilder()
             {
-                Url = path
-            };
+                Url = path,
+                ImageUrl = $"http://{baseAddress}/images/ED_img.png" + GenerateUniqueParam()
+        };
 
-            embed.WithTitle("ED")
+            embed.WithTitle(titleText)
                 .WithAuthor(Context.Client.CurrentUser)
                 .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
+                .WithColor(Color.DarkBlue)
                 .WithCurrentTimestamp();
 
             await ReplyAsync(embed: embed.Build());
