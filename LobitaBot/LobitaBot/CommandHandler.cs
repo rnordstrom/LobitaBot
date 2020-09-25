@@ -1,19 +1,30 @@
 ﻿using Discord.Commands;
 using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
 namespace LobitaBot
 {
+    public class VideoService
+    {
+        public int RollIndex { get; set; } = -1;
+    }
+
     public class CommandHandler
     {
         private readonly CommandService commands;
         private readonly DiscordSocketClient client;
+        private readonly IServiceProvider services;
 
         public CommandHandler(DiscordSocketClient client, CommandService commands)
         {
             this.commands = commands;
             this.client = client;
+            services = new ServiceCollection()
+                .AddSingleton<VideoService>()
+                .BuildServiceProvider();
         }
 
         public async Task InstallCommandsAsync()
@@ -21,7 +32,7 @@ namespace LobitaBot
             client.MessageReceived += HandleCommandAsync;
 
             await commands.AddModulesAsync(assembly: Assembly.GetEntryAssembly(),
-                                            services: null);
+                                            services: services);
         }
 
         private async Task HandleCommandAsync(SocketMessage messageParam)
@@ -47,7 +58,7 @@ namespace LobitaBot
             await commands.ExecuteAsync(
                 context: context,
                 argPos: argPos,
-                services: null);
+                services: services);
         }
     }
 }
