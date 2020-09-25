@@ -8,12 +8,13 @@ namespace LobitaBot
 {
     public class LobitaModule : ModuleBase<SocketCommandContext>
     {
-        string baseAddress = Environment.GetEnvironmentVariable("PUBLIC_IP");
-        string workingDirectory = Directory.GetCurrentDirectory();
+        private readonly VideoService _videoService;
+        private string baseAddress = Environment.GetEnvironmentVariable("PUBLIC_IP");
+        private string workingDirectory = Directory.GetCurrentDirectory();
         private string imagesDirectory = "images";
         private string videosDirectory = "videos";
-        string footerText = "Powered by LobitaBot.";
-        string titleText = "Click here to play video...";
+        private string footerText = "Powered by LobitaBot.";
+        private string titleText = "Click here to play video...";
         private string[] imageHandles = new string[] 
         {
             "lysithea",
@@ -30,14 +31,29 @@ namespace LobitaBot
             "ED"
         };
 
-        private string BuildLink(string directory, string cmdHandle)
+        public LobitaModule (VideoService vs) => _videoService = vs;
+
+        private string BuildRandomImageLinkFor(string imageHandle)
         {
-            DirectoryInfo di = new DirectoryInfo(Path.Join(workingDirectory, directory, cmdHandle));
+            DirectoryInfo di = new DirectoryInfo(Path.Join(workingDirectory, imagesDirectory, imageHandle));
             FileInfo[] files = di.GetFiles();
             Random rand = new Random();
             int chosen = rand.Next(0, files.Length - 1);
 
-            return $"http://{baseAddress}/{directory}/{cmdHandle}/{files[chosen].Name}" + GenerateUniqueParam();
+            return $"http://{baseAddress}/{imagesDirectory}/{imageHandle}/{files[chosen].Name}" + GenerateUniqueParam();
+        }
+
+        private string BuildRandomVideoLinkFor(string videoHandle)
+        {
+            DirectoryInfo di = new DirectoryInfo(Path.Join(workingDirectory, videosDirectory, videoHandle));
+            FileInfo[] files = di.GetFiles();
+            
+            if(_videoService.RollIndex < 0)
+            {
+                _videoService.RollIndex = files.Length - 1;
+            }
+
+            return $"http://{baseAddress}/{videosDirectory}/{videoHandle}/{files[_videoService.RollIndex--].Name}" + GenerateUniqueParam();
         }
 
         private string BuildRandomImageLink()
@@ -45,7 +61,7 @@ namespace LobitaBot
             Random rand = new Random();
             int chosenDir = rand.Next(0, imageHandles.Length - 1);
 
-            return BuildLink(imagesDirectory, imageHandles[chosenDir]);
+            return BuildRandomImageLinkFor(imageHandles[chosenDir]);
         }
 
         private string GenerateUniqueParam()
@@ -74,7 +90,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Lysithea.")]
         public async Task LysitheaAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[0]);
+            string path = BuildRandomImageLinkFor(imageHandles[0]);
 
             var embed = new EmbedBuilder()
             {
@@ -94,7 +110,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Holo.")]
         public async Task HoloAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[1]);
+            string path = BuildRandomImageLinkFor(imageHandles[1]);
 
             var embed = new EmbedBuilder()
             {
@@ -114,7 +130,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Fenrir.")]
         public async Task FenrirAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[2]);
+            string path = BuildRandomImageLinkFor(imageHandles[2]);
 
             var embed = new EmbedBuilder()
             {
@@ -134,7 +150,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Myuri.")]
         public async Task MyuriAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[3]);
+            string path = BuildRandomImageLinkFor(imageHandles[3]);
 
             var embed = new EmbedBuilder()
             {
@@ -154,7 +170,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Ryouko.")]
         public async Task RyoukoAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[4]);
+            string path = BuildRandomImageLinkFor(imageHandles[4]);
 
             var embed = new EmbedBuilder()
             {
@@ -174,7 +190,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Nagatoro.")]
         public async Task NagatoroAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[5]);
+            string path = BuildRandomImageLinkFor(imageHandles[5]);
 
             var embed = new EmbedBuilder()
             {
@@ -194,7 +210,7 @@ namespace LobitaBot
         [Summary("Displays a random image of Velvet.")]
         public async Task VelvetAsync()
         {
-            string path = BuildLink(imagesDirectory, imageHandles[6]);
+            string path = BuildRandomImageLinkFor(imageHandles[6]);
 
             var embed = new EmbedBuilder()
             {
@@ -234,7 +250,7 @@ namespace LobitaBot
         [Summary("Displays a random anime opening theme.")]
         public async Task OpAsync()
         {
-            string path = BuildLink(videosDirectory, videoHandles[0]);
+            string path = BuildRandomVideoLinkFor(videoHandles[0]);
 
             var embed = new EmbedBuilder()
             {
@@ -255,7 +271,7 @@ namespace LobitaBot
         [Summary("Displays a random anime opening theme.")]
         public async Task EdAsync()
         {
-            string path = BuildLink(videosDirectory, videoHandles[1]);
+            string path = BuildRandomVideoLinkFor(videoHandles[1]);
 
             var embed = new EmbedBuilder()
             {
