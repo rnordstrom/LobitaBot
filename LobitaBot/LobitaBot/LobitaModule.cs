@@ -2,6 +2,7 @@
 using Discord.Commands;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace LobitaBot
@@ -73,15 +74,20 @@ namespace LobitaBot
         [Summary("Display the list of commands.")]
         public async Task HelpAsync()
         {
-            string help = "---Commands---\n" +
-                "- oka.lysithea\n" +
-                "- oka.holo\n" +
-                "- oka.fenrir\n" +
-                "- oka.myuri\n" +
-                "- oka.ryouko\n" +
-                "- oka.nagatoro\n" +
-                "- oka.velvet\n" +
-                "- oka.mita";
+            string help = "Images:\n" +
+                "\t-oka.lysithea\n" +
+                "\t-oka.holo\n" +
+                "\t-oka.fenrir\n" +
+                "\t-oka.myuri\n" +
+                "\t-oka.ryouko\n" +
+                "\t-oka.nagatoro\n" +
+                "\t-oka.velvet\n" +
+                "\t-oka.mita\n" +
+                "Videos:\n" +
+                "\t-oka.op\n" +
+                "\t-oka.ed\n" +
+                "Avatar:\n" +
+                "\t-oka.avatar <User ID>";
 
             await ReplyAsync(help);
         }
@@ -277,12 +283,55 @@ namespace LobitaBot
             {
                 Url = path,
                 ImageUrl = $"http://{baseAddress}/images/ED_img.png" + GenerateUniqueParam()
-        };
+            };
 
             embed.WithTitle(titleText)
                 .WithAuthor(Context.Client.CurrentUser)
                 .WithFooter(footer => footer.Text = footerText)
                 .WithColor(Color.DarkBlue)
+                .WithCurrentTimestamp();
+
+            await ReplyAsync(embed: embed.Build());
+        }
+
+        [Command("avatar")]
+        [Summary("Displays the requesting user's avatar.")]
+        public async Task AvatarAsync(string userID = null)
+        {
+            var users = Context.Message.MentionedUsers;
+            EmbedBuilder embed = null;
+
+            if(!string.IsNullOrEmpty(userID))
+            {
+                if(users.Count() == 1)
+                {
+                    var user = users.ElementAt(0);
+
+                    embed = new EmbedBuilder()
+                    {
+                        Title = $"{user.Username}'s avatar",
+                        ImageUrl = user.GetAvatarUrl()
+                    };
+                }
+                else
+                {
+                    await ReplyAsync($"Avatar can not be displayed for user {userID}.");
+
+                    return;
+                }
+            }
+            else
+            {
+                embed = new EmbedBuilder()
+                {
+                    Title = $"{Context.User.Username}'s avatar",
+                    ImageUrl = Context.User.GetAvatarUrl()
+                };
+            }
+
+            embed.WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
                 .WithCurrentTimestamp();
 
             await ReplyAsync(embed: embed.Build());
