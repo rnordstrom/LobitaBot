@@ -24,7 +24,8 @@ namespace LobitaBot
             "myuri",
             "ryouko",
             "nagatoro",
-            "velvet"
+            "velvet",
+            "hololive"
         };
         private string[] videoHandles = new string[]
         {
@@ -32,7 +33,7 @@ namespace LobitaBot
             "ED"
         };
 
-        public LobitaModule (VideoService vs) => _videoService = vs;
+        public LobitaModule(VideoService vs) => _videoService = vs;
 
         private string BuildRandomImageLinkFor(string imageHandle)
         {
@@ -70,6 +71,22 @@ namespace LobitaBot
             return $"?_={DateTime.Now.Millisecond}";
         }
 
+        private Embed CreateImageEmbedFor(string cmdName, string cmdHandle)
+        {
+            var embed = new EmbedBuilder()
+            {
+                ImageUrl = BuildRandomImageLinkFor(cmdHandle)
+            };
+
+            embed.WithTitle(cmdName)
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+
+            return embed.Build();
+        }
+
         [Command("help")]
         [Summary("Display the list of commands.")]
         public async Task HelpAsync()
@@ -82,6 +99,7 @@ namespace LobitaBot
                 "\t-oka.ryouko\n" +
                 "\t-oka.nagatoro\n" +
                 "\t-oka.velvet\n" +
+                "\t-oka.hololive\n" +
                 "\t-oka.mita\n" +
                 "Videos:\n" +
                 "\t-oka.op\n" +
@@ -96,151 +114,81 @@ namespace LobitaBot
         [Summary("Displays a random image of Lysithea.")]
         public async Task LysitheaAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[0]);
+            Embed e = CreateImageEmbedFor("Lysithea", imageHandles[0]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
-
-            embed.WithTitle("Lysithea")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
-
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("holo")]
         [Summary("Displays a random image of Holo.")]
         public async Task HoloAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[1]);
+            Embed e = CreateImageEmbedFor("Holo", imageHandles[1]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
-
-            embed.WithTitle("Holo")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
-
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("fenrir")]
         [Summary("Displays a random image of Fenrir.")]
         public async Task FenrirAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[2]);
+            Embed e = CreateImageEmbedFor("Fenrir", imageHandles[2]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
-
-            embed.WithTitle("Fenrir")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
-
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("myuri")]
         [Summary("Displays a random image of Myuri.")]
         public async Task MyuriAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[3]);
+            Embed e = CreateImageEmbedFor("Myuri", imageHandles[3]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
-
-            embed.WithTitle("Myuri")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
-
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("ryouko")]
         [Summary("Displays a random image of Ryouko.")]
         public async Task RyoukoAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[4]);
+            Embed e = CreateImageEmbedFor("Ryouko", imageHandles[4]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
-
-            embed.WithTitle("Ryouko")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
-
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("nagatoro")]
         [Summary("Displays a random image of Nagatoro.")]
         public async Task NagatoroAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[5]);
+            Embed e = CreateImageEmbedFor("Nagatoro", imageHandles[5]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
-
-            embed.WithTitle("Nagatoro")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
-
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("velvet")]
         [Summary("Displays a random image of Velvet.")]
         public async Task VelvetAsync()
         {
-            string path = BuildRandomImageLinkFor(imageHandles[6]);
+            Embed e = CreateImageEmbedFor("Velvet", imageHandles[6]);
 
-            var embed = new EmbedBuilder()
-            {
-                ImageUrl = path
-            };
+            await ReplyAsync(embed: e);
+        }
 
-            embed.WithTitle("Velvet")
-                .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
-                .WithColor(Color.DarkGrey)
-                .WithCurrentTimestamp();
+        [Command("hololive")]
+        [Summary("Displays a random Hololive image.")]
+        public async Task HololiveAsync()
+        {
+            Embed e = CreateImageEmbedFor("Hololive", imageHandles[7]);
 
-            await ReplyAsync(embed: embed.Build());
+            await ReplyAsync(embed: e);
         }
 
         [Command("mita")]
         [Summary("Displays a random image of any character.")]
         public async Task MitaAsync()
         {
-            string path = BuildRandomImageLink();
-
             var embed = new EmbedBuilder()
             {
-                ImageUrl = path
+                ImageUrl = BuildRandomImageLink()
             };
 
             embed.WithTitle("Okamita")
