@@ -1,15 +1,20 @@
 ﻿using Discord;
 using Discord.Commands;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 
 namespace LobitaBot
 {
     public class LobitaModule : ModuleBase<SocketCommandContext>
     {
         private readonly VideoService _videoService;
+        private ITagIndex index = new DbTagIndex();
+        private TagParser parser = new TagParser();
         private string baseAddress = Environment.GetEnvironmentVariable("PUBLIC_IP");
         private string workingDirectory = Directory.GetCurrentDirectory();
         private string imagesDirectory = "images";
@@ -33,7 +38,10 @@ namespace LobitaBot
             "ED"
         };
 
-        public LobitaModule(VideoService vs) => _videoService = vs;
+        public LobitaModule(VideoService vs)
+        {
+            _videoService = vs;
+        }
 
         private string BuildRandomImageLinkFor(string imageHandle)
         {
@@ -101,6 +109,7 @@ namespace LobitaBot
                 "\t-oka.velvet\n" +
                 "\t-oka.hololive\n" +
                 "\t-oka.mita\n" +
+                "\t-oka.search [search term]\n" +
                 "Videos:\n" +
                 "\t-oka.op\n" +
                 "\t-oka.ed\n" +
@@ -249,7 +258,7 @@ namespace LobitaBot
             var users = Context.Message.MentionedUsers;
             EmbedBuilder embed = null;
 
-            if(!string.IsNullOrEmpty(userID))
+            if (!string.IsNullOrEmpty(userID))
             {
                 if(users.Count() == 1)
                 {
@@ -283,6 +292,91 @@ namespace LobitaBot
                 .WithCurrentTimestamp();
 
             await ReplyAsync(embed: embed.Build());
+        }
+
+        [Command("search")]
+        [Summary("Search for images related to a particular free-text tag.")]
+        public async Task SearchAsync(string searchTerm = null)
+        {
+            if (string.IsNullOrEmpty(searchTerm))
+            {
+                await ReplyAsync("Usage: oka.search [search term]");
+
+                return;
+            }
+            else
+            {
+                searchTerm = searchTerm.Replace("\\", string.Empty);
+                searchTerm = searchTerm.ToLower();
+
+                List<string> tags;
+                string url;
+                string title;
+                string suggestions;
+                string searchTermEscaped;
+                EmbedBuilder embed = new EmbedBuilder();
+
+                if (searchTerm.Contains("_"))
+                {
+                    searchTermEscaped = searchTerm.Insert(searchTerm.IndexOf("_"), @"\");
+                    searchTermEscaped = searchTerm.Replace("_", "\\_");
+                }
+                else
+                {
+                    searchTermEscaped = searchTerm;
+                }
+
+                if (!string.IsNullOrEmpty(index.LookupSingleTag(searchTerm)))
+                {
+                    url = index.LookupRandom(searchTerm);
+                    title = parser.BuildTitle(searchTerm);
+
+                    if (!string.IsNullOrEmpty(url))
+                    {
+                        embed.WithTitle(title)
+                        .WithImageUrl(url)
+                        .WithAuthor(Context.Client.CurrentUser)
+                        .WithFooter(footer => footer.Text = footerText)
+                        .WithColor(Color.DarkGrey)
+                        .WithCurrentTimestamp();
+                    }
+                    else
+                    {
+                        await ReplyAsync($"No images found for '{searchTermEscaped}'.");
+
+                        return;
+                    }
+                }
+                else
+                {
+                    tags = index.LookupTags(searchTerm);
+
+                    if (tags.Count >= 1)
+                    {
+                        suggestions = parser.BuildSuggestions(tags, searchTerm);
+
+                        if (!string.IsNullOrEmpty(suggestions))
+                        {
+                            embed.WithTitle($"{tags.Count} results for '{searchTermEscaped}'. Showing top results.");
+                            embed.WithDescription(suggestions);
+                        }
+                        else
+                        {
+                            await ReplyAsync($"No suggestions exist for search term '{searchTermEscaped}'. Did you enter an incomplete or partial tag?");
+
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        await ReplyAsync($"No results found for '{searchTermEscaped}'.");
+
+                        return;
+                    }
+                }
+
+                await ReplyAsync(embed: embed.Build());
+            }
         }
     }
 }
