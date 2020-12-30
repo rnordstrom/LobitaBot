@@ -1,6 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace LobitaBot
 {
@@ -14,12 +15,9 @@ namespace LobitaBot
             conn = new MySqlConnection(connStr);
         }
 
-        public string LookupRandom(string searchTerm)
+        public string LookupRandomLink(string searchTerm)
         {
-            if (searchTerm.Contains("'"))
-            {
-                searchTerm = searchTerm.Insert(searchTerm.IndexOf("'"), "'");
-            }
+            searchTerm = EscapeApostrophe(searchTerm);
 
             string minQuery = 
                 $"SELECT MIN(l.id) " +
@@ -36,7 +34,7 @@ namespace LobitaBot
             int maxId = 0;
             int chosen;
             string linkQuery;
-            string url = "";
+            string link = "";
 
             try
             {
@@ -74,7 +72,7 @@ namespace LobitaBot
 
                 while (rdr.Read())
                 {
-                    url = (string)rdr[0];
+                    link = (string)rdr[0];
                 }
             }
             catch (Exception e)
@@ -84,17 +82,65 @@ namespace LobitaBot
 
             conn.Close();
 
-            return url;
+            return link;
         }
 
-        public string LookupSingleTag(string searchTerm)
+        public string LookupRandomTag()
         {
-            if (searchTerm.Contains("'"))
+            string minQuery = $"SELECT MIN(id) FROM tags";
+            string maxQuery = $"SELECT MAX(id) FROM tags";
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+            Random rand = new Random();
+            int minId = 0;
+            int maxId = 0;
+            int chosen = 0;
+            string tag = "";
+
+            try
             {
-                searchTerm = searchTerm.Insert(searchTerm.IndexOf("'"), "'");
+                conn.Open();
+
+                cmd = new MySqlCommand(minQuery, conn);
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    minId = (int)rdr[0];
+                }
+
+                rdr.Close();
+
+                cmd = new MySqlCommand(maxQuery, conn);
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    maxId = (int)rdr[0];
+                }
+
+                rdr.Close();
+
+                chosen = rand.Next(minId, maxId + 1);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
-            string tagQuery = $"SELECT name from tags WHERE name = '{searchTerm}'";
+            conn.Close();
+
+            if (chosen > 0)
+            {
+                tag = LookupSingleTag(chosen);
+            }
+
+            return tag;
+        }
+
+        public string LookupSingleTag(int id)
+        {
+            string tagQuery = $"SELECT name from tags WHERE id = '{id}'";
             string tag = "";
             MySqlCommand cmd;
             MySqlDataReader rdr;
@@ -121,12 +167,46 @@ namespace LobitaBot
             return tag;
         }
 
+        public bool TagExists(string searchTerm)
+        {
+            searchTerm = EscapeApostrophe(searchTerm);
+
+            string tagQuery = $"SELECT name from tags WHERE name = '{searchTerm}'";
+            string tag = "";
+            bool exists = false;
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            try
+            {
+                conn.Open();
+
+                cmd = new MySqlCommand(tagQuery, conn);
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    tag = (string)rdr[0];
+                }
+
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    exists = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            conn.Close();
+
+            return exists;
+        }
+
         public List<string> LookupTags(string searchTerm)
         {
-            if (searchTerm.Contains("'"))
-            {
-                searchTerm = searchTerm.Insert(searchTerm.IndexOf("'"), "'");
-            }
+            searchTerm = EscapeApostrophe(searchTerm);
 
             string tagQuery = $"SELECT name from tags WHERE name LIKE '%{searchTerm}%'";
             List<string> tags = new List<string>();
@@ -153,6 +233,68 @@ namespace LobitaBot
             conn.Close();
 
             return tags;
+        }
+
+        public List<TagData> LookupTagData(List<string> searchTerms)
+        {
+            string escaped;
+            string dataQuery;
+            string last = searchTerms[searchTerms.Count - 1];
+            StringBuilder sb = new StringBuilder();
+            List<TagData> tagData = new List<TagData>();
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            foreach (string s in searchTerms)
+            {
+                escaped = EscapeApostrophe(s);
+
+                if (s == last)
+                {
+                    sb.Append($"t.name = '{escaped}'");
+                }
+                else
+                {
+                    sb.Append($"t.name = '{escaped}' OR ");
+                }
+            }
+
+            dataQuery =
+                $"SELECT t.name, t.id, COUNT(l.id) " +
+                $"FROM tags AS t, links AS l " +
+                $"WHERE t.id = l.tag_id AND({sb}) " +
+                $"GROUP BY t.name";
+
+            try
+            {
+                conn.Open();
+
+                cmd = new MySqlCommand(dataQuery, conn);
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (long)rdr[2]));
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            conn.Close();
+
+            return tagData;
+        }
+
+        private string EscapeApostrophe(string tag)
+        {
+            if (tag.Contains("'"))
+            {
+                return tag.Insert(tag.IndexOf("'"), "'");
+            }
+
+            return tag;
         }
     }
 }

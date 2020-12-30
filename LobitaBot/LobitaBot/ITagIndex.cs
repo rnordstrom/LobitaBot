@@ -4,8 +4,11 @@ namespace LobitaBot
 {
     public interface ITagIndex
     {
-        string LookupRandom(string searchTerm);
-        string LookupSingleTag(string searchTerm);
+        string LookupRandomLink(string searchTerm);
+        string LookupRandomTag();
+        bool TagExists(string searchTerm);
+        string LookupSingleTag(int id);
         List<string> LookupTags(string searchTerm);
+        List<TagData> LookupTagData(List<string> tags);
     }
 }

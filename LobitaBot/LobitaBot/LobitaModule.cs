@@ -4,12 +4,24 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
 
 namespace LobitaBot
 {
+    public struct TagData
+    {
+        public TagData(string tagName, int tagID, long numLinks)
+        {
+            TagName = tagName;
+            TagID = tagID;
+            NumLinks = numLinks;
+        }
+
+        public string TagName { get; }
+        public int TagID { get; }
+        public long NumLinks { get; }
+    };
+
     public class LobitaModule : ModuleBase<SocketCommandContext>
     {
         private readonly VideoService _videoService;
@@ -19,8 +31,9 @@ namespace LobitaBot
         private string workingDirectory = Directory.GetCurrentDirectory();
         private string imagesDirectory = "images";
         private string videosDirectory = "videos";
-        private string footerText = "Powered by LobitaBot.";
+        private string footerText = "Requested by ";
         private string titleText = "Click here to play video...";
+        private const int MaxResults = 1000;
         private string[] imageHandles = new string[] 
         {
             "lysithea",
@@ -88,7 +101,7 @@ namespace LobitaBot
 
             embed.WithTitle(cmdName)
                 .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
+                .WithFooter(footer => footer.Text = footerText + Context.User.Username)
                 .WithColor(Color.DarkGrey)
                 .WithCurrentTimestamp();
 
@@ -109,12 +122,12 @@ namespace LobitaBot
                 "\t-oka.velvet\n" +
                 "\t-oka.hololive\n" +
                 "\t-oka.mita\n" +
-                "\t-oka.search [search term]\n" +
+                "\t-oka.search search_term\n" +
                 "Videos:\n" +
                 "\t-oka.op\n" +
                 "\t-oka.ed\n" +
                 "Avatar:\n" +
-                "\t-oka.avatar <User ID>";
+                "\t-oka.avatar [user_ID]";
 
             await ReplyAsync(help);
         }
@@ -202,7 +215,7 @@ namespace LobitaBot
 
             embed.WithTitle("Okamita")
                 .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
+                .WithFooter(footer => footer.Text = footerText + Context.User.Username)
                 .WithColor(Color.DarkGrey)
                 .WithCurrentTimestamp();
 
@@ -223,7 +236,7 @@ namespace LobitaBot
 
             embed.WithTitle(titleText)
                 .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
+                .WithFooter(footer => footer.Text = footerText + Context.User.Username)
                 .WithColor(Color.DarkRed)
                 .WithCurrentTimestamp();
 
@@ -244,7 +257,7 @@ namespace LobitaBot
 
             embed.WithTitle(titleText)
                 .WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
+                .WithFooter(footer => footer.Text = footerText + Context.User.Username)
                 .WithColor(Color.DarkBlue)
                 .WithCurrentTimestamp();
 
@@ -287,7 +300,7 @@ namespace LobitaBot
             }
 
             embed.WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = footerText)
+                .WithFooter(footer => footer.Text = footerText + Context.User.Username)
                 .WithColor(Color.DarkGrey)
                 .WithCurrentTimestamp();
 
@@ -300,7 +313,7 @@ namespace LobitaBot
         {
             if (string.IsNullOrEmpty(searchTerm))
             {
-                await ReplyAsync("Usage: oka.search [search term]");
+                await ReplyAsync("Usage: oka.search search term");
 
                 return;
             }
@@ -309,12 +322,26 @@ namespace LobitaBot
                 searchTerm = searchTerm.Replace("\\", string.Empty);
                 searchTerm = searchTerm.ToLower();
 
-                List<string> tags;
-                string url;
+                string tag;
+                string link;
                 string title;
-                string suggestions;
                 string searchTermEscaped;
+                string description;
+                int id;
+                List<string> suggestions;
+                List<string> tags;
+                List<TagData> tagData;
                 EmbedBuilder embed = new EmbedBuilder();
+
+                if (int.TryParse(searchTerm, out id))
+                {
+                    tag = index.LookupSingleTag(id);
+
+                    if (!string.IsNullOrEmpty(tag))
+                    {
+                        searchTerm = tag;
+                    }
+                }
 
                 if (searchTerm.Contains("_"))
                 {
@@ -326,17 +353,18 @@ namespace LobitaBot
                     searchTermEscaped = searchTerm;
                 }
 
-                if (!string.IsNullOrEmpty(index.LookupSingleTag(searchTerm)))
+                if (index.TagExists(searchTerm))
                 {
-                    url = index.LookupRandom(searchTerm);
+                    link = index.LookupRandomLink(searchTerm);
                     title = parser.BuildTitle(searchTerm);
 
-                    if (!string.IsNullOrEmpty(url))
+                    if (!string.IsNullOrEmpty(link))
                     {
                         embed.WithTitle(title)
-                        .WithImageUrl(url)
+                        .WithImageUrl(link)
+                        .WithUrl(link)
                         .WithAuthor(Context.Client.CurrentUser)
-                        .WithFooter(footer => footer.Text = footerText)
+                        .WithFooter(footer => footer.Text = footerText + Context.User.Username)
                         .WithColor(Color.DarkGrey)
                         .WithCurrentTimestamp();
                     }
@@ -351,18 +379,30 @@ namespace LobitaBot
                 {
                     tags = index.LookupTags(searchTerm);
 
-                    if (tags.Count >= 1)
+                    if (tags.Count < MaxResults)
                     {
-                        suggestions = parser.BuildSuggestions(tags, searchTerm);
+                        suggestions = parser.FilterSuggestions(tags, searchTerm);
+                    }
+                    else
+                    {
+                        await ReplyAsync($"Your search for '{searchTerm}' is too broad! Please be more specific.");
 
-                        if (!string.IsNullOrEmpty(suggestions))
+                        return;
+                    }
+
+                    if (suggestions.Count > 0)
+                    {
+                        tagData = index.LookupTagData(suggestions);
+                        description = parser.CompileSuggestions(tagData);
+
+                        if (!string.IsNullOrEmpty(description))
                         {
-                            embed.WithTitle($"{tags.Count} results for '{searchTermEscaped}'. Showing top results.");
-                            embed.WithDescription(suggestions);
+                            embed.WithTitle($"<Tag ID> Tag Name (#Posts). Showing top results.");
+                            embed.WithDescription(description);
                         }
                         else
                         {
-                            await ReplyAsync($"No suggestions exist for search term '{searchTermEscaped}'. Did you enter an incomplete or partial tag?");
+                            await ReplyAsync($"No suggestions exist for search term '{searchTermEscaped}'.");
 
                             return;
                         }
@@ -375,8 +415,47 @@ namespace LobitaBot
                     }
                 }
 
-                await ReplyAsync(embed: embed.Build());
+                await Context.Channel.SendMessageAsync(embed: embed.Build());
             }
+        }
+
+        [Command("random")]
+        [Summary("Search for random images belonging to a random tag.")]
+        public async Task RandomAsync()
+        {
+            EmbedBuilder embed = new EmbedBuilder();
+            string tag = index.LookupRandomTag();
+            string title;
+            string link;
+
+            if (!string.IsNullOrEmpty(tag))
+            {
+                title = parser.BuildTitle(tag);
+                link = index.LookupRandomLink(tag);
+
+                while (string.IsNullOrEmpty(link))
+                {
+                    tag = index.LookupRandomTag();
+                    title = parser.BuildTitle(tag);
+                    link = index.LookupRandomLink(tag);
+                }
+
+                embed.WithTitle(title)
+                .WithImageUrl(link)
+                .WithUrl(link)
+                .WithAuthor(Context.Client.CurrentUser)
+                .WithFooter(footer => footer.Text = footerText + Context.User.Username)
+                .WithColor(Color.DarkGrey)
+                .WithCurrentTimestamp();
+            }
+            else
+            {
+                await ReplyAsync("An error occurred during random tag lookup.");
+
+                return;
+            }
+
+            await Context.Channel.SendMessageAsync(embed: embed.Build());
         }
     }
 }

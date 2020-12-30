@@ -39,47 +39,57 @@ namespace LobitaBot
             return sb.ToString();
         }
 
-        public string BuildSuggestions(List<string> tags, string searchTerm)
+        public List<string> FilterSuggestions(List<string> tags, string searchTerm)
         {
-            StringBuilder sb = new StringBuilder();
-            string suggestion;
+            List<string> filtered = new List<string>();
             string[] parts;
-            int i = 1;
 
-            foreach (string n in tags)
+            foreach (string t in tags)
             {
-                suggestion = $@"{i}. {n}" + Environment.NewLine;
-
-                if ((sb.ToString() + suggestion).Length > MaxDescriptionSize)
-                {
-                    break;
-                }
-
                 if (searchTerm.Contains("_"))
                 {
-                    if (n.Split("(")[0].Contains(searchTerm))
+                    if (t.Split("(")[0].Contains(searchTerm))
                     {
-                        sb.Append(suggestion);
-
-                        i++;
+                        filtered.Add(t);
                     }
                 }
                 else
                 {
-                    parts = n.Split("(")[0].Split("_");
+                    parts = t.Split("(")[0].Split("_");
 
-                    if (n.Split("(")[0].Split("_").Contains(searchTerm))
+                    if (t.Split("(")[0].Split("_").Contains(searchTerm))
                     {
-                        sb.Append(suggestion);
-
-                        i++;
+                        filtered.Add(t);
                     }
                 }
             }
 
-            if (i > 1)
+            return filtered;
+        }
+
+        public string CompileSuggestions(List<TagData> tagData)
+        {
+            StringBuilder sb = new StringBuilder();
+            string suggestion;
+
+            if (tagData.Count > 0)
             {
-                sb.Insert(0, "```");
+                sb.Append("```");
+
+                foreach (TagData td in tagData)
+                {
+                    suggestion = $@"<{td.TagID}> {td.TagName} ({td.NumLinks})" + Environment.NewLine;
+
+                    if ((sb.ToString() + suggestion).Length > MaxDescriptionSize)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        sb.Append(suggestion);
+                    }
+                }
+
                 sb.Append("```");
             }
 

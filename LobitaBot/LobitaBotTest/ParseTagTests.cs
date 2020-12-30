@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace LobitaBot.Tests
 {
@@ -7,7 +8,18 @@ namespace LobitaBot.Tests
     {
         private TagParser parser = new TagParser();
         private ITagIndex index = new DbTagIndex();
-        private string exampleTag = "eastern_wolf_(kemono_friends)";
+        private string exampleTag = "gawr_gura";
+        private string exampleTag2 = "hilda_valentine_goneril";
+        string partial = "hilda_valentine";
+        string part1;
+        string part2;
+
+        [TestInitialize]
+        public void Setup()
+        {
+            part1 = exampleTag.Split("_")[0];
+            part2 = exampleTag.Split("_")[1];
+        }
 
         [TestMethod()]
         public void BuildTitleTest()
@@ -25,27 +37,53 @@ namespace LobitaBot.Tests
         }
 
         [TestMethod()]
-        public void BuildSuggestionsTest()
+        public void FilterSuggestionsTest()
         {
-            string part1 = exampleTag.Split("_")[0];
-            string part2 = exampleTag.Split("_")[1];
-            string partial = exampleTag.Split("(")[0];
-            string suggestions;
+            List<string> tags = index.LookupTags(part1);
+            List<string> suggestions = parser.FilterSuggestions(tags, part1);
 
-            suggestions = parser.BuildSuggestions(index.LookupTags(part1), part1);
-
-            Assert.IsTrue(suggestions.Length < TagParser.MaxDescriptionSize);
+            Assert.IsTrue(suggestions.Count <= tags.Count);
             Assert.IsTrue(suggestions.Contains(exampleTag));
 
-            suggestions = parser.BuildSuggestions(index.LookupTags(part2), part2);
+            tags = index.LookupTags(part2);
+            suggestions = parser.FilterSuggestions(tags, part2);
 
-            Assert.IsTrue(suggestions.Length < TagParser.MaxDescriptionSize);
+            Assert.IsTrue(suggestions.Count <= tags.Count);
             Assert.IsTrue(suggestions.Contains(exampleTag));
 
-            suggestions = parser.BuildSuggestions(index.LookupTags(partial), partial);
+            tags = index.LookupTags(partial);
+            suggestions = parser.FilterSuggestions(tags, partial);
 
-            Assert.IsTrue(suggestions.Length < TagParser.MaxDescriptionSize);
-            Assert.IsTrue(suggestions.Contains(exampleTag));
+            Assert.IsTrue(suggestions.Count <= tags.Count);
+            Assert.IsTrue(suggestions.Contains(exampleTag2));
+        }
+
+        [TestMethod()]
+        public void CompileSuggestionsTest()
+        {
+            List<string> tags = index.LookupTags(part1);
+            List<string> suggestions = parser.FilterSuggestions(tags, part1);
+            List<TagData> tagData = index.LookupTagData(suggestions);
+            string description = parser.CompileSuggestions(tagData);
+
+            Assert.IsTrue(description.Length < TagParser.MaxDescriptionSize);
+            Assert.IsTrue(description.Contains(exampleTag));
+
+            tags = index.LookupTags(part2);
+            suggestions = parser.FilterSuggestions(tags, part2);
+            tagData = index.LookupTagData(suggestions);
+            description = parser.CompileSuggestions(tagData);
+
+            Assert.IsTrue(description.Length < TagParser.MaxDescriptionSize);
+            Assert.IsTrue(description.Contains(exampleTag));
+
+            tags = index.LookupTags(partial);
+            suggestions = parser.FilterSuggestions(tags, partial);
+            tagData = index.LookupTagData(suggestions);
+            description = parser.CompileSuggestions(tagData);
+
+            Assert.IsTrue(description.Length < TagParser.MaxDescriptionSize);
+            Assert.IsTrue(description.Contains(exampleTag2));
         }
     }
 }
