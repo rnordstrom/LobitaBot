@@ -4,8 +4,7 @@ namespace LobitaBot
 {
     public interface ITagIndex
     {
-        string LookupRandomLink(string searchTerm);
-        string LookupRandomTag();
+        PostData LookupRandomPost(string searchTerm);
         bool TagExists(string searchTerm);
         string LookupSingleTag(int id);
         List<string> LookupTags(string searchTerm);

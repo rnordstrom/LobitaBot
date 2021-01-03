@@ -5,11 +5,11 @@ using System.Text;
 
 namespace LobitaBot
 {
-    public class TagParser
+    public static class TagParser
     {
         public const int MaxDescriptionSize = 2048;
 
-        public string BuildTitle(string searchTerm)
+        public static string BuildTitle(string searchTerm)
         {
             string[] parts = searchTerm.Split("_");
             StringBuilder sb = new StringBuilder();
@@ -39,25 +39,32 @@ namespace LobitaBot
             return sb.ToString();
         }
 
-        public List<string> FilterSuggestions(List<string> tags, string searchTerm)
+        public static List<string> FilterSuggestions(List<string> tags, string searchTerm)
         {
             List<string> filtered = new List<string>();
-            string[] parts;
+            string replaced;
 
             foreach (string t in tags)
             {
+                if (t.Contains('/'))
+                {
+                    replaced = t.Replace('/', '_');
+                }
+                else
+                {
+                    replaced = t;
+                }
+
                 if (searchTerm.Contains("_"))
                 {
-                    if (t.Split("(")[0].Contains(searchTerm))
+                    if (replaced.Split("(")[0].Contains(searchTerm))
                     {
                         filtered.Add(t);
                     }
                 }
                 else
                 {
-                    parts = t.Split("(")[0].Split("_");
-
-                    if (t.Split("(")[0].Split("_").Contains(searchTerm))
+                    if (replaced.Split("(")[0].Split("_").Contains(searchTerm))
                     {
                         filtered.Add(t);
                     }
@@ -67,7 +74,7 @@ namespace LobitaBot
             return filtered;
         }
 
-        public string CompileSuggestions(List<TagData> tagData)
+        public static string CompileSuggestions(List<TagData> tagData)
         {
             StringBuilder sb = new StringBuilder();
             string suggestion;
@@ -94,6 +101,43 @@ namespace LobitaBot
             }
 
             return sb.ToString();
+        }
+
+        public static string EscapeApostrophe(string tag)
+        {
+            string tagEscaped;
+
+            if (tag.Contains("'"))
+            {
+                tagEscaped = tag.Insert(tag.IndexOf("'"), "'");
+            }
+            else
+            {
+                tagEscaped = tag;
+            }
+
+            return tagEscaped;
+        }
+
+        public static string EscapeUnderscore(string tag)
+        {
+            string tagEscaped;
+
+            if (tag.Contains("_"))
+            {
+                tagEscaped = tag.Replace("_", "\\_");
+            }
+            else
+            {
+                tagEscaped = tag;
+            }
+
+            return tagEscaped;
+        }
+
+        public static string Format(string tag)
+        {
+            return tag.Replace("\\", string.Empty).ToLower();
         }
     }
 }
