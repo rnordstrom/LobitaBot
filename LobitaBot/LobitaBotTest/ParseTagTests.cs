@@ -63,26 +63,56 @@ namespace LobitaBot.Tests
             List<string> tags = index.LookupTags(part1);
             List<string> suggestions = TagParser.FilterSuggestions(tags, part1);
             List<TagData> tagData = index.LookupTagData(suggestions);
-            string description = TagParser.CompileSuggestions(tagData);
+            List<string> description = TagParser.CompileSuggestions(tagData);
+            bool found = false;
 
-            Assert.IsTrue(description.Length < TagParser.MaxDescriptionSize);
-            Assert.IsTrue(description.Contains(exampleTag));
+            foreach (string s in description)
+            {
+                Assert.IsTrue(s.Length < TagParser.MaxDescriptionSize);
+
+                if (s.Contains(exampleTag))
+                {
+                    found = true;
+                }
+            }
+
+            Assert.IsTrue(found);
 
             tags = index.LookupTags(part2);
             suggestions = TagParser.FilterSuggestions(tags, part2);
             tagData = index.LookupTagData(suggestions);
             description = TagParser.CompileSuggestions(tagData);
+            found = false;
 
-            Assert.IsTrue(description.Length < TagParser.MaxDescriptionSize);
-            Assert.IsTrue(description.Contains(exampleTag));
+            foreach (string s in description)
+            {
+                Assert.IsTrue(s.Length < TagParser.MaxDescriptionSize);
+
+                if (s.Contains(exampleTag))
+                {
+                    found = true;
+                }
+            }
+
+            Assert.IsTrue(found);
 
             tags = index.LookupTags(partial);
             suggestions = TagParser.FilterSuggestions(tags, partial);
             tagData = index.LookupTagData(suggestions);
             description = TagParser.CompileSuggestions(tagData);
+            found = false;
 
-            Assert.IsTrue(description.Length < TagParser.MaxDescriptionSize);
-            Assert.IsTrue(description.Contains(exampleTag2));
+            foreach (string s in description)
+            {
+                Assert.IsTrue(s.Length < TagParser.MaxDescriptionSize);
+
+                if (s.Contains(exampleTag2))
+                {
+                    found = true;
+                }
+            }
+
+            Assert.IsTrue(found);
         }
     }
 }

@@ -2,6 +2,8 @@
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -12,9 +14,39 @@ namespace LobitaBot
         public int RollIndex { get; set; } = -1;
     }
 
+    public class PageData
+    {
+        public List<string> Pages { get; set; }
+        public int PageNum { get; set; }
+        public DateTime DateTime { get; }
+
+        public PageData(List<string> pages)
+        {
+            Pages = pages;
+            PageNum = 0;
+            DateTime = DateTime.Now;
+        }
+
+    }
+
     public class SearchService
     {
         public bool HandlerAdded { get; set; } = false;
+        public Dictionary<ulong, PageData> PageIndex { get; } = new Dictionary<ulong, PageData>();
+
+        public void AddLimited(ulong msgId, PageData pageData)
+        {
+            if (PageIndex.Count < 100)
+            {
+                PageIndex.Add(msgId, pageData);
+            }
+            else
+            {
+                ulong oldestMsg = PageIndex.Aggregate((x, y) => x.Value.DateTime < y.Value.DateTime ? x : y).Key;
+
+                PageIndex.Remove(oldestMsg);
+            }
+        }
     }
 
     public class CommandHandler

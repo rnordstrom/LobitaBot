@@ -61,13 +61,13 @@ namespace LobitaBot
             return LookupTagData(tags, dataQuery);
         }
 
-        public List<string> LookupTags(string searchTerm)
+        public new List<string> LookupTags(string searchTerm)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
             string tagQuery = $"SELECT name from tags WHERE name LIKE '%{searchTerm}%'";
 
-            return LookupTags(searchTerm, tagQuery);
+            return base.LookupTags(tagQuery);
         }
 
         public new bool TagExists(string searchTerm)

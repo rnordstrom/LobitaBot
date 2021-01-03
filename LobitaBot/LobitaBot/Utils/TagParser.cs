@@ -7,7 +7,7 @@ namespace LobitaBot
 {
     public static class TagParser
     {
-        public const int MaxDescriptionSize = 2048;
+        public const int MaxDescriptionSize = 1000;
 
         public static string BuildTitle(string searchTerm)
         {
@@ -74,8 +74,9 @@ namespace LobitaBot
             return filtered;
         }
 
-        public static string CompileSuggestions(List<TagData> tagData)
+        public static List<string> CompileSuggestions(List<TagData> tagData)
         {
+            List<string> pages = new List<string>();
             StringBuilder sb = new StringBuilder();
             string suggestion;
 
@@ -89,7 +90,14 @@ namespace LobitaBot
 
                     if ((sb.ToString() + suggestion).Length > MaxDescriptionSize)
                     {
-                        break;
+                        sb.Append("```");
+                        pages.Add(sb.ToString());
+
+                        sb = new StringBuilder("```");
+
+                        sb.Append(suggestion);
+
+                        continue;
                     }
                     else
                     {
@@ -98,9 +106,11 @@ namespace LobitaBot
                 }
 
                 sb.Append("```");
+
+                pages.Add(sb.ToString());
             }
 
-            return sb.ToString();
+            return pages;
         }
 
         public static string EscapeApostrophe(string tag)
