@@ -59,12 +59,13 @@ namespace LobitaBot
         [Summary("Search for random images related to a particular free-text character tag.")]
         public async Task CharacterAsync(string searchTerm = null)
         {
-            Embed embed = SearchAsync(searchTerm, new DbCharacterIndex(DbName)).Result;
+            EmbedBuilder embedBuilder = SearchAsync(searchTerm, new DbCharacterIndex(DbName)).Result;
             ulong msgId;
             PageData pageData;
 
-            if (embed != null)
+            if (embedBuilder != null)
             {
+                Embed embed = embedBuilder.Build();
                 var toSend = await Context.Channel.SendMessageAsync(embed: embed);
 
                 if (embed.Image != null)
@@ -89,12 +90,13 @@ namespace LobitaBot
         [Summary("Search for random images related to a particular free-text series tag.")]
         public async Task SeriesAsync(string searchTerm = null)
         {
-            Embed embed = SearchAsync(searchTerm, new DbSeriesIndex(DbName)).Result;
+            EmbedBuilder embedBuilder = SearchAsync(searchTerm, new DbSeriesIndex(DbName)).Result;
             ulong msgId;
             PageData pageData;
 
-            if (embed != null)
+            if (embedBuilder != null)
             {
+                Embed embed = embedBuilder.Build();
                 var toSend = await Context.Channel.SendMessageAsync(embed: embed);
 
                 if (embed.Image != null)
@@ -223,17 +225,17 @@ namespace LobitaBot
         [Summary("Search for random images belonging to a random tag.")]
         public async Task RandomAsync()
         {
-            Embed embed = RandomPost().Result;
+            EmbedBuilder embedBuilder = RandomPost().Result;
 
-            if (embed != null)
+            if (embedBuilder != null)
             {
-                var toSend = await Context.Channel.SendMessageAsync(embed: embed);
+                var toSend = await Context.Channel.SendMessageAsync(embed: embedBuilder.Build());
 
                 await toSend.AddReactionAsync(rerollRandom);
             }
         }
 
-        private async Task<Embed> SearchAsync(string searchTerm, ITagIndex index)
+        private async Task<EmbedBuilder> SearchAsync(string searchTerm, ITagIndex index)
         {
             if (string.IsNullOrEmpty(searchTerm))
             {
@@ -259,7 +261,7 @@ namespace LobitaBot
                 List<string> suggestions;
                 List<string> tags;
                 List<TagData> tagData;
-                EmbedBuilder embed = new EmbedBuilder();
+                EmbedBuilder embedBuilder = new EmbedBuilder();
 
                 if (int.TryParse(searchTerm, out id))
                 {
@@ -280,14 +282,14 @@ namespace LobitaBot
 
                     if (!string.IsNullOrEmpty(postData.Link))
                     {
-                        embed.WithTitle(title)
+                        embedBuilder.WithTitle(title)
                             .AddField("Character ID", postData.PostId)
                             .AddField("Series Name", postData.SeriesName)
                             .WithDescription($"React with {rerollCharacter.Name} to reroll character, {rerollSeries.Name} to reroll from the same series.")
                             .WithImageUrl(postData.Link)
                             .WithUrl(postData.Link)
                             .WithAuthor(Context.Client.CurrentUser)
-                            .WithFooter(footer => footer.Text = Constants.FooterText + Context.User.Username)
+                            .WithFooter(footer => footer.Text = Constants.FooterText + Context.User)
                             .WithColor(Color.DarkGrey)
                             .WithCurrentTimestamp();
                     }
@@ -320,7 +322,7 @@ namespace LobitaBot
 
                         if (pages.Count > 0)
                         {
-                            embed.WithTitle(SuggestionTitle)
+                            embedBuilder.WithTitle(SuggestionTitle)
                                 .WithDescription(pages[0])
                                 .WithFooter($"Page 1 of {pages.Count}");
                         }
@@ -339,11 +341,11 @@ namespace LobitaBot
                     }
                 }
 
-                return embed.Build();
+                return embedBuilder;
             }
         }
 
-        private async Task<Embed> RandomPost()
+        private async Task<EmbedBuilder> RandomPost()
         {
             if (!_searchService.HandlerAdded)
             {
@@ -376,7 +378,7 @@ namespace LobitaBot
                     .WithImageUrl(postData.Link)
                     .WithUrl(postData.Link)
                     .WithAuthor(Context.Client.CurrentUser)
-                    .WithFooter(footer => footer.Text = Constants.FooterText + Context.User.Username)
+                    .WithFooter(footer => footer.Text = Constants.FooterText + Context.User)
                     .WithColor(Color.DarkGrey)
                     .WithCurrentTimestamp();
             }
@@ -387,7 +389,7 @@ namespace LobitaBot
                 return null;
             }
 
-            return embed.Build();
+            return embed;
         }
 
         public async Task ReactionAdded_Event(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
@@ -405,6 +407,7 @@ namespace LobitaBot
             string characterId;
             string seriesId;
             EmbedBuilder builder;
+            EmbedBuilder embedBuilder;
             Embed embed;
             PageData pageData;
             bool success;
@@ -412,10 +415,13 @@ namespace LobitaBot
             if (reaction.Emote.Name == rerollCharacter.Name)
             {
                 characterId = embedFields[0].Value;
-                embed = SearchAsync(characterId, new DbCharacterIndex(DbName)).Result;
+                embedBuilder = SearchAsync(characterId, new DbCharacterIndex(DbName)).Result;
 
-                if (embed != null)
+                if (embedBuilder != null)
                 {
+                    embedBuilder.WithFooter(Constants.FooterText + msg.Author);
+
+                    embed = embedBuilder.Build();
                     var toSend = await channel.SendMessageAsync(embed: embed);
 
                     if (embed.Image != null)
@@ -428,10 +434,13 @@ namespace LobitaBot
             else if (reaction.Emote.Name == rerollSeries.Name)
             {
                 seriesId = embedFields[1].Value;
-                embed = SearchAsync(seriesId, new DbSeriesIndex(DbName)).Result;
+                embedBuilder = SearchAsync(seriesId, new DbSeriesIndex(DbName)).Result;
 
-                if (embed != null)
+                if (embedBuilder != null)
                 {
+                    embedBuilder.WithFooter(Constants.FooterText + msg.Author);
+
+                    embed = embedBuilder.Build();
                     var toSend = await channel.SendMessageAsync(embed: embed);
 
                     if (embed.Image != null)
@@ -443,10 +452,14 @@ namespace LobitaBot
             }
             else if (reaction.Emote.Name == rerollRandom.Name)
             {
-                embed = RandomPost().Result;
+                embedBuilder = RandomPost().Result;
 
-                if (embed != null)
+
+                if (embedBuilder != null)
                 {
+                    embedBuilder.WithFooter(Constants.FooterText + msg.Author);
+
+                    embed = embedBuilder.Build();
                     var toSend = await channel.SendMessageAsync(embed: embed);
 
                     if (embed.Image != null)

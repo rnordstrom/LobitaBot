@@ -36,16 +36,14 @@ namespace LobitaBot
 
         public void AddLimited(ulong msgId, PageData pageData)
         {
-            if (PageIndex.Count < 100)
-            {
-                PageIndex.Add(msgId, pageData);
-            }
-            else
+            if (PageIndex.Count == 100)
             {
                 ulong oldestMsg = PageIndex.Aggregate((x, y) => x.Value.DateTime < y.Value.DateTime ? x : y).Key;
 
                 PageIndex.Remove(oldestMsg);
             }
+
+            PageIndex.Add(msgId, pageData);
         }
     }
 
