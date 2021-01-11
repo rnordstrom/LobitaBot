@@ -40,7 +40,6 @@ namespace LobitaBot
     public class Search : ModuleBase<SocketCommandContext>
     {
         private SearchService _searchService;
-        private const string DbName = "tagdb";
         private Emoji rerollSeries = new Emoji("🔁");
         private Emoji rerollCharacter = new Emoji("🔂");
         private Emoji rerollRandom = new Emoji("🔄");
@@ -59,7 +58,8 @@ namespace LobitaBot
         [Summary("Search for random images related to a particular free-text character tag.")]
         public async Task CharacterAsync(string searchTerm = null)
         {
-            EmbedBuilder embedBuilder = SearchAsync(searchTerm, new DbCharacterIndex(DbName)).Result;
+            EmbedBuilder embedBuilder = 
+                SearchAsync(searchTerm, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase())).Result;
             ulong msgId;
             PageData pageData;
 
@@ -90,7 +90,8 @@ namespace LobitaBot
         [Summary("Search for random images related to a particular free-text series tag.")]
         public async Task SeriesAsync(string searchTerm = null)
         {
-            EmbedBuilder embedBuilder = SearchAsync(searchTerm, new DbSeriesIndex(DbName)).Result;
+            EmbedBuilder embedBuilder 
+                = SearchAsync(searchTerm, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase())).Result;
             ulong msgId;
             PageData pageData;
 
@@ -121,8 +122,8 @@ namespace LobitaBot
         [Summary("Lists characters that belong to the specified series.")]
         public async Task InSeriesAsync(string seriesName = null)
         {
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(DbName);
-            DbCharacterIndex charIndex = new DbCharacterIndex(DbName);
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase());
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
             EmbedBuilder embed = new EmbedBuilder();
             int id;
             ulong msgId;
@@ -173,8 +174,8 @@ namespace LobitaBot
         [Summary("Lists series that feature the specified character.")]
         public async Task WithCharacterAsync(string charName = null)
         {
-            DbCharacterIndex charIndex = new DbCharacterIndex(DbName);
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(DbName);
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase());
             EmbedBuilder embed = new EmbedBuilder();
             int id;
             ulong msgId;
@@ -353,7 +354,7 @@ namespace LobitaBot
                 _searchService.HandlerAdded = true;
             }
 
-            DbCharacterIndex characterIndex = new DbCharacterIndex(DbName);
+            DbCharacterIndex characterIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
             EmbedBuilder embed = new EmbedBuilder();
             PostData postData;
             string tag = characterIndex.LookupRandomTag();
@@ -415,7 +416,7 @@ namespace LobitaBot
             if (reaction.Emote.Name == rerollCharacter.Name)
             {
                 characterId = embedFields[0].Value;
-                embedBuilder = SearchAsync(characterId, new DbCharacterIndex(DbName)).Result;
+                embedBuilder = SearchAsync(characterId, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase())).Result;
 
                 if (embedBuilder != null)
                 {
@@ -434,7 +435,7 @@ namespace LobitaBot
             else if (reaction.Emote.Name == rerollSeries.Name)
             {
                 seriesId = embedFields[1].Value;
-                embedBuilder = SearchAsync(seriesId, new DbSeriesIndex(DbName)).Result;
+                embedBuilder = SearchAsync(seriesId, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase())).Result;
 
                 if (embedBuilder != null)
                 {
