@@ -257,6 +257,7 @@ namespace LobitaBot
                 string tag;
                 string title;
                 string searchTermEscaped;
+                string seriesNameEscaped;
                 int id;
                 PostData postData;
                 List<string> suggestions;
@@ -280,12 +281,13 @@ namespace LobitaBot
                 {
                     postData = index.LookupRandomPost(searchTerm);
                     title = TagParser.BuildTitle(postData.TagName);
+                    seriesNameEscaped = TagParser.EscapeUnderscore(postData.SeriesName);
 
                     if (!string.IsNullOrEmpty(postData.Link))
                     {
                         embedBuilder.WithTitle(title)
                             .AddField("Character ID", postData.PostId)
-                            .AddField("Series Name", postData.SeriesName)
+                            .AddField("Series Name", seriesNameEscaped)
                             .WithDescription($"React with {rerollCharacter.Name} to reroll character, {rerollSeries.Name} to reroll from the same series.")
                             .WithImageUrl(postData.Link)
                             .WithUrl(postData.Link)
@@ -359,6 +361,7 @@ namespace LobitaBot
             PostData postData;
             string tag = characterIndex.LookupRandomTag();
             string title;
+            string seriesNameEscaped;
 
             if (!string.IsNullOrEmpty(tag))
             {
@@ -372,9 +375,11 @@ namespace LobitaBot
                     postData = characterIndex.LookupRandomPost(tag);
                 }
 
+                seriesNameEscaped = TagParser.EscapeUnderscore(postData.SeriesName);
+
                 embed.WithTitle(title)
                     .AddField("Character ID", postData.PostId)
-                    .AddField("Series Name", postData.SeriesName)
+                    .AddField("Series Name", seriesNameEscaped)
                     .WithDescription($"React with {rerollRandom.Name} to reroll a random character.")
                     .WithImageUrl(postData.Link)
                     .WithUrl(postData.Link)
@@ -406,7 +411,7 @@ namespace LobitaBot
             var embedFields = msgEmbed.Fields;
             string embedTitle = msgEmbed.Title;
             string characterId;
-            string seriesId;
+            string seriesName;
             EmbedBuilder builder;
             EmbedBuilder embedBuilder;
             Embed embed;
@@ -434,8 +439,8 @@ namespace LobitaBot
             }
             else if (reaction.Emote.Name == rerollSeries.Name)
             {
-                seriesId = embedFields[1].Value;
-                embedBuilder = SearchAsync(seriesId, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase())).Result;
+                seriesName = TagParser.Format(embedFields[1].Value);
+                embedBuilder = SearchAsync(seriesName, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase())).Result;
 
                 if (embedBuilder != null)
                 {
