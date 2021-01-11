@@ -61,6 +61,8 @@ namespace LobitaBot
                 .AddSingleton<VideoService>()
                 .AddSingleton<SearchService>()
                 .BuildServiceProvider();
+
+            this.client.SetGameAsync("oka.help");
         }
 
         public async Task InstallCommandsAsync()
