@@ -43,18 +43,18 @@ namespace LobitaBot
 
                 if (s == last)
                 {
-                    sb.Append($"s.name = '{escaped}'");
+                    sb.Append($"'{escaped}'");
                 }
                 else
                 {
-                    sb.Append($"s.name = '{escaped}' OR ");
+                    sb.Append($"'{escaped}',");
                 }
             }
 
             dataQuery =
                 $"SELECT s.name, s.id, COUNT(l.id) " +
                 $"FROM tags AS t, series_tags AS st, series AS s, links AS l " +
-                $"WHERE t.id = l.tag_id AND t.id = st.tag_id AND st.series_id = s.id AND({sb}) " +
+                $"WHERE t.id = l.tag_id AND t.id = st.tag_id AND st.series_id = s.id AND s.name IN ({sb}) " +
                 $"GROUP BY s.name";
 
             return LookupTagData(tags, dataQuery);

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace LobitaBot
 {
-    public struct TagData
+    public class TagData
     {
         public TagData(string tagName, int tagID, long numLinks)
         {
@@ -122,6 +122,12 @@ namespace LobitaBot
         [Summary("Lists characters that belong to the specified series.")]
         public async Task InSeriesAsync(string seriesName = null)
         {
+            if (!_searchService.HandlerAdded)
+            {
+                Context.Client.ReactionAdded += ReactionAdded_Event;
+                _searchService.HandlerAdded = true;
+            }
+
             DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase());
             DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
             EmbedBuilder embed = new EmbedBuilder();
@@ -174,6 +180,12 @@ namespace LobitaBot
         [Summary("Lists series that feature the specified character.")]
         public async Task WithCharacterAsync(string charName = null)
         {
+            if (!_searchService.HandlerAdded)
+            {
+                Context.Client.ReactionAdded += ReactionAdded_Event;
+                _searchService.HandlerAdded = true;
+            }
+
             DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
             DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase());
             EmbedBuilder embed = new EmbedBuilder();

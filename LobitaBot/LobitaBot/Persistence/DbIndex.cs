@@ -10,7 +10,13 @@ namespace LobitaBot
 
         protected DbIndex(string dbName)
         {
-            Conn = new MySqlConnection($"server=localhost;user=root;database={dbName};port=3306;password={Environment.GetEnvironmentVariable("PWD")}");
+            Conn = new MySqlConnection(
+                $"server={Environment.GetEnvironmentVariable("DB_HOST")};" +
+                $"user={Environment.GetEnvironmentVariable("DB_USER")};" +
+                $"database={dbName};port=3306;" +
+                $"password={Environment.GetEnvironmentVariable("DB_PWD")};" +
+                $"Allow User Variables=true;" +
+                $"Ignore Prepare=false;");
         }
 
         protected PostData LookupRandomPost(string postQuery)
