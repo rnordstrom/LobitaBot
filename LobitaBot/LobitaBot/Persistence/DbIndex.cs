@@ -75,31 +75,23 @@ namespace LobitaBot
             return tag;
         }
 
-        protected List<TagData> LookupTagData(string dataQuery, List<string> names)
+        protected List<TagData> LookupTagData(List<string> tags, string dataQuery)
         {
             List<TagData> tagData = new List<TagData>();
+            MySqlCommand cmd;
             MySqlDataReader rdr;
 
             try
             {
                 Conn.Open();
 
-                MySqlCommand cmd = new MySqlCommand(dataQuery, Conn);
+                cmd = new MySqlCommand(dataQuery, Conn);
 
-                foreach (string n in names)
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
                 {
-                    cmd.Parameters.Clear();
-                    cmd.Parameters.AddWithValue("@name", n);
-                    cmd.Prepare();
-
-                    rdr = cmd.ExecuteReader();
-
-                    while (rdr.Read())
-                    {
-                        tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (long)rdr[2]));
-                    }
-
-                    rdr.Close();
+                    tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (long)rdr[2]));
                 }
             }
             catch (Exception e)

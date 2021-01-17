@@ -1,6 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace LobitaBot
 {
@@ -32,12 +33,32 @@ namespace LobitaBot
 
         public List<TagData> LookupTagData(List<string> tags)
         {
-            string dataQuery =
+            string escaped;
+            string dataQuery;
+            string last = tags[tags.Count - 1];
+            StringBuilder sb = new StringBuilder();
+
+            foreach (string s in tags)
+            {
+                escaped = TagParser.EscapeApostrophe(s);
+
+                if (s == last)
+                {
+                    sb.Append($"'{escaped}'");
+                }
+                else
+                {
+                    sb.Append($"'{escaped}',");
+                }
+            }
+
+            dataQuery =
                 $"SELECT t.name, t.id, COUNT(l.id) " +
                 $"FROM tags AS t, links AS l " +
-                $"WHERE t.id = l.tag_id AND t.name = @name";
+                $"WHERE t.id = l.tag_id AND t.name IN ({sb}) " +
+                $"GROUP BY t.name";
 
-            return LookupTagData(dataQuery, tags);
+            return LookupTagData(tags, dataQuery);
         }
 
         public new List<string> LookupTags(string searchTerm)
