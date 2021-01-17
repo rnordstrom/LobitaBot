@@ -10,7 +10,13 @@ namespace LobitaBot
 
         protected DbIndex(string dbName)
         {
-            Conn = new MySqlConnection($"server=localhost;user=root;database={dbName};port=3306;password={Environment.GetEnvironmentVariable("PWD")}");
+            Conn = new MySqlConnection(
+                $"server={Environment.GetEnvironmentVariable("DB_HOST")};" +
+                $"user={Environment.GetEnvironmentVariable("DB_USER")};" +
+                $"database={dbName};port=3306;" +
+                $"password={Environment.GetEnvironmentVariable("DB_PWD")};" +
+                $"Allow User Variables=true;" +
+                $"Ignore Prepare=false;");
         }
 
         protected PostData LookupRandomPost(string postQuery)
@@ -69,23 +75,31 @@ namespace LobitaBot
             return tag;
         }
 
-        protected List<TagData> LookupTagData(List<string> tags, string dataQuery)
+        protected List<TagData> LookupTagData(string dataQuery, List<string> names)
         {
             List<TagData> tagData = new List<TagData>();
-            MySqlCommand cmd;
             MySqlDataReader rdr;
 
             try
             {
                 Conn.Open();
 
-                cmd = new MySqlCommand(dataQuery, Conn);
+                MySqlCommand cmd = new MySqlCommand(dataQuery, Conn);
 
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
+                foreach (string n in names)
                 {
-                    tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (long)rdr[2]));
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("@name", n);
+                    cmd.Prepare();
+
+                    rdr = cmd.ExecuteReader();
+
+                    while (rdr.Read())
+                    {
+                        tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (long)rdr[2]));
+                    }
+
+                    rdr.Close();
                 }
             }
             catch (Exception e)
