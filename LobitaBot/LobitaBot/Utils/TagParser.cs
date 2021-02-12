@@ -119,7 +119,7 @@ namespace LobitaBot
 
             if (tag.Contains("'"))
             {
-                tagEscaped = tag.Insert(tag.IndexOf("'"), "'");
+                tagEscaped = tag.Replace("'", "''");
             }
             else
             {
