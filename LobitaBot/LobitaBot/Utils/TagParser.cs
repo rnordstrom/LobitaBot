@@ -113,6 +113,50 @@ namespace LobitaBot
             return pages;
         }
 
+        public static List<List<TagData>> CompileSuggestions(List<TagData> tagData, int maxNumFields)
+        {
+            List<List<TagData>> pages = new List<List<TagData>>();
+            List<TagData> page = new List<TagData>();
+            int i = 0;
+
+            foreach (TagData t in tagData)
+            {
+                if (i == 0 || i % maxNumFields != 0)
+                {
+                    page.Add(t);
+                }
+                else
+                {
+                    pages.Add(page);
+
+                    page = new List<TagData>();
+
+                    page.Add(t);
+                }
+
+                i++;
+            }
+
+            if (page.Count > 0) // If there are items remaining, fewer than the the maximum number of fields
+            {
+                pages.Add(page);
+            }
+
+            return pages;
+        }
+
+        public static List<string> ToTagInfoList(List<TagData> tagData)
+        {
+            List<string> tagInfo = new List<string>();
+
+            foreach (TagData t in tagData)
+            {
+                tagInfo.Add(EscapeUnderscore($@"<{t.TagID}> {t.TagName} ({t.NumLinks})"));
+            }
+
+            return tagInfo;
+        }
+
         public static string EscapeApostrophe(string tag)
         {
             string tagEscaped;

@@ -1,4 +1,5 @@
-﻿using Discord.Commands;
+﻿using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -16,20 +17,22 @@ namespace LobitaBot
 
     public class PageData
     {
-        public List<string> Pages { get; set; }
+        public List<List<TagData>> Pages { get; set; }
         public int PageNum { get; set; }
         public DateTime DateTime { get; }
+        public bool AlphabeticallySorted { get; set; } = false;
+        public bool NumericallySorted { get; set; } = false;
+        public bool SortedAscending { get; set; } = false;
 
-        public PageData(List<string> pages)
+        public PageData(List<List<TagData>> pages)
         {
             Pages = pages;
             PageNum = 0;
             DateTime = DateTime.Now;
         }
-
     }
 
-    public class SearchService
+    public class PageService
     {
         public bool HandlerAdded { get; set; } = false;
         public Dictionary<ulong, PageData> PageIndex { get; } = new Dictionary<ulong, PageData>();
@@ -45,6 +48,90 @@ namespace LobitaBot
 
             PageIndex.Add(msgId, pageData);
         }
+
+        public void SortAlphabeticalAsc(ulong msgId)
+        {
+            PageData pageData = PageIndex[msgId];
+            List<TagData> tagData = new List<TagData>();
+
+            foreach (List<TagData> page in pageData.Pages)
+            {
+                foreach (TagData t in page)
+                {
+                    tagData.Add(t);
+                }
+            }
+
+            tagData.Sort((t1, t2) => t1.TagName.CompareTo(t2.TagName));
+
+            PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+            PageIndex[msgId].AlphabeticallySorted = true;
+            PageIndex[msgId].NumericallySorted = false;
+            PageIndex[msgId].SortedAscending = true;
+        }
+
+        public void SortAlphabeticalDesc(ulong msgId)
+        {
+            PageData pageData = PageIndex[msgId];
+            List<TagData> tagData = new List<TagData>();
+
+            foreach (List<TagData> page in pageData.Pages)
+            {
+                foreach (TagData t in page)
+                {
+                    tagData.Add(t);
+                }
+            }
+
+            tagData.Sort((t1, t2) => t2.TagName.CompareTo(t1.TagName));
+
+            PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+            PageIndex[msgId].AlphabeticallySorted = true;
+            PageIndex[msgId].NumericallySorted = false;
+            PageIndex[msgId].SortedAscending = false;
+        }
+
+        public void SortPostNumAsc(ulong msgId)
+        {
+            PageData pageData = PageIndex[msgId];
+            List<TagData> tagData = new List<TagData>();
+
+            foreach (List<TagData> page in pageData.Pages)
+            {
+                foreach (TagData t in page)
+                {
+                    tagData.Add(t);
+                }
+            }
+
+            tagData.Sort((t1, t2) => t1.NumLinks.CompareTo(t2.NumLinks));
+
+            PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+            PageIndex[msgId].AlphabeticallySorted = false;
+            PageIndex[msgId].NumericallySorted = true;
+            PageIndex[msgId].SortedAscending = true;
+        }
+
+        public void SortPostNumDesc(ulong msgId)
+        {
+            PageData pageData = PageIndex[msgId];
+            List<TagData> tagData = new List<TagData>();
+
+            foreach (List<TagData> page in pageData.Pages)
+            {
+                foreach (TagData t in page)
+                {
+                    tagData.Add(t);
+                }
+            }
+
+            tagData.Sort((t1, t2) => t2.NumLinks.CompareTo(t1.NumLinks));
+
+            PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+            PageIndex[msgId].AlphabeticallySorted = false;
+            PageIndex[msgId].NumericallySorted = true;
+            PageIndex[msgId].SortedAscending = false;
+        }
     }
 
     public class CommandHandler
@@ -59,7 +146,7 @@ namespace LobitaBot
             this.client = client;
             services = new ServiceCollection()
                 .AddSingleton<VideoService>()
-                .AddSingleton<SearchService>()
+                .AddSingleton<PageService>()
                 .BuildServiceProvider();
 
             this.client.SetGameAsync("oka.help");

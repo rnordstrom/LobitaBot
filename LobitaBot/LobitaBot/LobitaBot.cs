@@ -13,6 +13,14 @@ namespace LobitaBot
         public const string FooterText = "Requested by ";
         public static string BaseAddress = Environment.GetEnvironmentVariable("PUBLIC_IP");
         public static string WorkingDirectory = Directory.GetCurrentDirectory();
+        public static Emoji rerollSeries = new Emoji("🔁");
+        public static Emoji rerollCharacter = new Emoji("🔂");
+        public static Emoji rerollRandom = new Emoji("🔄");
+        public static Emoji pageBack = new Emoji("⏪");
+        public static Emoji pageForward = new Emoji("⏩");
+        public static Emoji sortAlphabetical = new Emoji("🔠");
+        public static Emoji sortNumerical = new Emoji("🔢");
+        public static Emoji changeOrder = new Emoji("↕️");
     }
 
     class LobitaBot
