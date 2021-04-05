@@ -6,8 +6,8 @@ namespace LobitaBot.Tests
     [TestClass()]
     public class IndexTests
     {
-        DbCharacterIndex charIndex = new DbCharacterIndex("tagdb_test");
-        DbSeriesIndex seriesIndex = new DbSeriesIndex("tagdb_test");
+        DbCharacterIndex charIndex = new DbCharacterIndex("tagdb_test", new CacheService());
+        DbSeriesIndex seriesIndex = new DbSeriesIndex("tagdb_test", new CacheService());
         private string exampleTag = "gawr_gura";
         private string withApostrophe = "ninomae_ina'nis";
         private string nonExistant = "couldneverexist";
@@ -25,25 +25,63 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupRandomTest()
         {
-            Assert.AreNotEqual(0, charIndex.LookupRandomPost(exampleTag).PostId);
-            Assert.IsFalse(string.IsNullOrEmpty(charIndex.LookupRandomPost(exampleTag).TagName));
-            Assert.IsFalse(string.IsNullOrEmpty(charIndex.LookupRandomPost(exampleTag).Link));
-            Assert.IsFalse(string.IsNullOrEmpty(charIndex.LookupRandomPost(exampleTag).SeriesName));
+            PostData pd = charIndex.LookupRandomPost(exampleTag);
 
-            Assert.AreNotEqual(0, charIndex.LookupRandomPost(withApostrophe).PostId);
-            Assert.IsFalse(string.IsNullOrEmpty(charIndex.LookupRandomPost(withApostrophe).TagName));
-            Assert.IsFalse(string.IsNullOrEmpty(charIndex.LookupRandomPost(withApostrophe).Link));
-            Assert.IsFalse(string.IsNullOrEmpty(charIndex.LookupRandomPost(withApostrophe).SeriesName));
+            Assert.IsNotNull(pd);
+            Assert.AreNotEqual(0, pd.TagId);
+            Assert.IsFalse(string.IsNullOrEmpty(pd.TagName));
+            Assert.IsFalse(string.IsNullOrEmpty(pd.Link));
+            Assert.IsFalse(string.IsNullOrEmpty(pd.SeriesName));
 
-            Assert.AreEqual(0, charIndex.LookupRandomPost(nonExistant).PostId);
-            Assert.IsTrue(string.IsNullOrEmpty(charIndex.LookupRandomPost(nonExistant).TagName));
-            Assert.IsTrue(string.IsNullOrEmpty(charIndex.LookupRandomPost(nonExistant).Link));
-            Assert.IsTrue(string.IsNullOrEmpty(charIndex.LookupRandomPost(nonExistant).SeriesName));
+            pd = charIndex.LookupRandomPost(withApostrophe);
 
-            Assert.AreNotEqual(0, seriesIndex.LookupRandomPost(seriesName).PostId);
-            Assert.IsFalse(string.IsNullOrEmpty(seriesIndex.LookupRandomPost(seriesName).TagName));
-            Assert.IsFalse(string.IsNullOrEmpty(seriesIndex.LookupRandomPost(seriesName).Link));
-            Assert.IsFalse(string.IsNullOrEmpty(seriesIndex.LookupRandomPost(seriesName).SeriesName));
+            Assert.IsNotNull(pd);
+            Assert.AreNotEqual(0, pd.TagId);
+            Assert.IsFalse(string.IsNullOrEmpty(pd.TagName));
+            Assert.IsFalse(string.IsNullOrEmpty(pd.Link));
+            Assert.IsFalse(string.IsNullOrEmpty(pd.SeriesName));
+
+            Assert.IsNull(charIndex.LookupRandomPost(nonExistant));
+
+            pd = seriesIndex.LookupRandomPost(seriesName);
+
+            Assert.IsNotNull(pd);
+            Assert.AreNotEqual(0, pd.TagId);
+            Assert.IsFalse(string.IsNullOrEmpty(pd.TagName));
+            Assert.IsFalse(string.IsNullOrEmpty(pd.Link));
+            Assert.IsFalse(string.IsNullOrEmpty(pd.SeriesName));
+        }
+
+        [TestMethod]
+        public void LookupNextTest()
+        {
+            int index = 1;
+            PostData pd = charIndex.LookupNextPost(exampleTag, index);
+
+            Assert.IsNotNull(pd);
+            Assert.AreEqual(index + 1, pd.PostIndex);
+
+            index = 999;
+            pd = charIndex.LookupNextPost(exampleTag, index);
+
+            Assert.IsNotNull(pd);
+            Assert.AreEqual(2, pd.PostIndex);
+        }
+
+        [TestMethod]
+        public void LookupPreviousTest()
+        {
+            int index = 1;
+            PostData pd = charIndex.LookupPreviousPost(exampleTag, index);
+
+            Assert.IsNotNull(pd);
+            Assert.AreEqual(index - 1, pd.PostIndex);
+
+            index = -999;
+            pd = charIndex.LookupPreviousPost(exampleTag, index);
+
+            Assert.IsNotNull(pd);
+            Assert.AreEqual(0, pd.PostIndex);
         }
 
         [TestMethod]

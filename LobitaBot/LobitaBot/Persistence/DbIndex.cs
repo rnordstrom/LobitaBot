@@ -7,8 +7,9 @@ namespace LobitaBot
     public abstract class DbIndex
     {
         protected MySqlConnection Conn { get; }
+        protected CacheService _cacheService;
 
-        protected DbIndex(string dbName)
+        protected DbIndex(string dbName, CacheService cacheService)
         {
             Conn = new MySqlConnection(
                 $"server={Environment.GetEnvironmentVariable("DB_HOST")};" +
@@ -17,13 +18,16 @@ namespace LobitaBot
                 $"password={Environment.GetEnvironmentVariable("DB_PWD")};" +
                 $"Allow User Variables=true;" +
                 $"Ignore Prepare=false;");
+            _cacheService = cacheService;
         }
 
-        protected PostData LookupRandomPost(string postQuery)
+        protected void PopulateCache(string postQuery)
         {
+            _cacheService.Clear();
+
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            PostData postData = new PostData(0, string.Empty, string.Empty, string.Empty);
+            int i = 0;
 
             try
             {
@@ -34,7 +38,7 @@ namespace LobitaBot
 
                 while (rdr.Read())
                 {
-                    postData = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3]);
+                    _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++));
                 }
             }
             catch (Exception e)
@@ -43,8 +47,6 @@ namespace LobitaBot
             }
 
             Conn.Close();
-
-            return postData;
         }
 
         protected string LookupSingleTag(string tagQuery)

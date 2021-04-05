@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,36 +22,50 @@ namespace LobitaBot
         public long NumLinks { get; }
     };
 
-    public struct PostData
+    public class PostData
     {
-        public PostData(int postId, string tagName, string link, string seriesName)
+        public PostData(int tagId, string tagName, string link, string seriesName, int postIndex)
         {
-            PostId = postId;
+            TagId = tagId;
             TagName = tagName;
             Link = link;
             SeriesName = seriesName;
+            PostIndex = postIndex;
         }
 
-        public int PostId { get; }
+        public int TagId { get; }
         public string TagName { get; }
         public string SeriesName { get; }
         public string Link { get; }
+        public int PostIndex { get; }
+    };
+
+    enum ROLL_SEQUENCE
+    {
+        RANDOM, PREVIOUS, NEXT
+    };
+
+    enum CATEGORY
+    {
+        CHARACTER, SERIES
     };
 
     public class Search : ModuleBase<SocketCommandContext>
     {
         private PageService _pageService;
+        private CacheService _cacheService;
         private const string SuggestionTitle = "<Tag ID> Tag Name (#Posts)";
-        private string SuggestionDescription = $"React with {Constants.sortAlphabetical} to sort alphabetically, " +
-                    $"{Constants.sortNumerical} to sort by number of posts, and " +
-                    $"{Constants.changeOrder} to switch between ascending/descending order.";
+        private string SuggestionDescription = $"React with {Constants.SortAlphabetical} to sort alphabetically, " +
+                    $"{Constants.SortNumerical} to sort by number of posts, and " +
+                    $"{Constants.ChangeOrder} to switch between ascending/descending order.";
         private const int MaxResults = 1000;
         private const bool IsInline = false;
         List<List<TagData>> pages;
 
-        public Search(PageService ps)
+        public Search(PageService ps, CacheService cs)
         {
             _pageService = ps;
+            _cacheService = cs;
         }
 
         [Command("character")]
@@ -58,7 +73,7 @@ namespace LobitaBot
         public async Task CharacterAsync(string searchTerm = null)
         {
             EmbedBuilder embedBuilder = 
-                SearchAsync(searchTerm, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase())).Result;
+                SearchAsync(searchTerm, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
             ulong msgId;
             PageData pageData;
 
@@ -69,8 +84,10 @@ namespace LobitaBot
 
                 if (embed.Image != null)
                 {
-                    await toSend.AddReactionAsync(Constants.rerollCharacter);
-                    await toSend.AddReactionAsync(Constants.rerollSeries);
+                    await toSend.AddReactionAsync(Constants.RerollCharacter);
+                    await toSend.AddReactionAsync(Constants.RerollSeries);
+                    await toSend.AddReactionAsync(Constants.PreviousImage);
+                    await toSend.AddReactionAsync(Constants.NextImage);
                 }
                 else
                 {
@@ -79,11 +96,11 @@ namespace LobitaBot
 
                     _pageService.AddLimited(msgId, pageData);
 
-                    await toSend.AddReactionAsync(Constants.pageBack);
-                    await toSend.AddReactionAsync(Constants.pageForward);
-                    await toSend.AddReactionAsync(Constants.sortAlphabetical);
-                    await toSend.AddReactionAsync(Constants.sortNumerical);
-                    await toSend.AddReactionAsync(Constants.changeOrder);
+                    await toSend.AddReactionAsync(Constants.PageBack);
+                    await toSend.AddReactionAsync(Constants.PageForward);
+                    await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
+                    await toSend.AddReactionAsync(Constants.ChangeOrder);
                 }
             }
         }
@@ -93,7 +110,7 @@ namespace LobitaBot
         public async Task SeriesAsync(string searchTerm = null)
         {
             EmbedBuilder embedBuilder 
-                = SearchAsync(searchTerm, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase())).Result;
+                = SearchAsync(searchTerm, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
             ulong msgId;
             PageData pageData;
 
@@ -104,8 +121,8 @@ namespace LobitaBot
 
                 if (embed.Image != null)
                 {
-                    await toSend.AddReactionAsync(Constants.rerollCharacter);
-                    await toSend.AddReactionAsync(Constants.rerollSeries);
+                    await toSend.AddReactionAsync(Constants.RerollCharacter);
+                    await toSend.AddReactionAsync(Constants.RerollSeries);
                 }
                 else
                 {
@@ -114,11 +131,11 @@ namespace LobitaBot
 
                     _pageService.AddLimited(msgId, pageData);
 
-                    await toSend.AddReactionAsync(Constants.pageBack);
-                    await toSend.AddReactionAsync(Constants.pageForward);
-                    await toSend.AddReactionAsync(Constants.sortAlphabetical);
-                    await toSend.AddReactionAsync(Constants.sortNumerical);
-                    await toSend.AddReactionAsync(Constants.changeOrder);
+                    await toSend.AddReactionAsync(Constants.PageBack);
+                    await toSend.AddReactionAsync(Constants.PageForward);
+                    await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
+                    await toSend.AddReactionAsync(Constants.ChangeOrder);
                 }
             }
         }
@@ -133,8 +150,8 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase());
-            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
             EmbedBuilder embed = new EmbedBuilder();
             List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
             int id;
@@ -187,11 +204,11 @@ namespace LobitaBot
 
                 _pageService.AddLimited(msgId, pageData);
 
-                await toSend.AddReactionAsync(Constants.pageBack);
-                await toSend.AddReactionAsync(Constants.pageForward);
-                await toSend.AddReactionAsync(Constants.sortAlphabetical);
-                await toSend.AddReactionAsync(Constants.sortNumerical);
-                await toSend.AddReactionAsync(Constants.changeOrder);
+                await toSend.AddReactionAsync(Constants.PageBack);
+                await toSend.AddReactionAsync(Constants.PageForward);
+                await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                await toSend.AddReactionAsync(Constants.SortNumerical);
+                await toSend.AddReactionAsync(Constants.ChangeOrder);
             }
             else
             {
@@ -209,8 +226,8 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase());
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
             EmbedBuilder embed = new EmbedBuilder();
             List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
             int id;
@@ -263,11 +280,11 @@ namespace LobitaBot
 
                 _pageService.AddLimited(msgId, pageData);
 
-                await toSend.AddReactionAsync(Constants.pageBack);
-                await toSend.AddReactionAsync(Constants.pageForward);
-                await toSend.AddReactionAsync(Constants.sortAlphabetical);
-                await toSend.AddReactionAsync(Constants.sortNumerical);
-                await toSend.AddReactionAsync(Constants.changeOrder);
+                await toSend.AddReactionAsync(Constants.PageBack);
+                await toSend.AddReactionAsync(Constants.PageForward);
+                await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                await toSend.AddReactionAsync(Constants.SortNumerical);
+                await toSend.AddReactionAsync(Constants.ChangeOrder);
             }
             else
             {
@@ -285,11 +302,11 @@ namespace LobitaBot
             {
                 var toSend = await Context.Channel.SendMessageAsync(embed: embedBuilder.Build());
 
-                await toSend.AddReactionAsync(Constants.rerollRandom);
+                await toSend.AddReactionAsync(Constants.RerollRandom);
             }
         }
 
-        private async Task<EmbedBuilder> SearchAsync(string searchTerm, ITagIndex index)
+        private async Task<EmbedBuilder> SearchAsync(string searchTerm, CATEGORY category, ITagIndex tagIndex, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
         {
             if (string.IsNullOrEmpty(searchTerm))
             {
@@ -312,17 +329,20 @@ namespace LobitaBot
                 string searchTermEscaped;
                 string seriesNameEscaped;
                 int id;
-                PostData postData;
+                PostData postData = null;
                 List<string> suggestions;
                 List<string> tags;
                 List<TagData> tagData;
                 EmbedBuilder embed = new EmbedBuilder();
                 List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
                 List<string> pageContent;
+                string embedDescription = $"React with {Constants.RerollCharacter.Name} to reroll character, " + 
+                    $"{Constants.RerollSeries.Name} to reroll from the same series.";
+                string categoryDescription = "";
 
                 if (int.TryParse(searchTerm, out id))
                 {
-                    tag = index.LookupSingleTag(id);
+                    tag = tagIndex.LookupSingleTag(id);
 
                     if (!string.IsNullOrEmpty(tag))
                     {
@@ -332,23 +352,47 @@ namespace LobitaBot
 
                 searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
 
-                if (index.TagExists(searchTerm))
+                if (tagIndex.TagExists(searchTerm))
                 {
-                    postData = index.LookupRandomPost(searchTerm);
-                    title = TagParser.BuildTitle(postData.TagName);
-                    seriesNameEscaped = TagParser.EscapeUnderscore(postData.SeriesName);
-
-                    if (!string.IsNullOrEmpty(postData.Link))
+                    switch (rollSequence)
                     {
+                        case ROLL_SEQUENCE.RANDOM:
+                            postData = tagIndex.LookupRandomPost(searchTerm);
+                            break;
+                        case ROLL_SEQUENCE.PREVIOUS:
+                            postData = tagIndex.LookupPreviousPost(searchTerm, postIndex);
+                            break;
+                        case ROLL_SEQUENCE.NEXT:
+                            postData = tagIndex.LookupNextPost(searchTerm, postIndex);
+                            break;
+                    }
+
+                    switch (category)
+                    {
+                        case CATEGORY.CHARACTER:
+                            categoryDescription = "Character roll";
+                            embedDescription += Environment.NewLine +
+                                $"View previous image with {Constants.PreviousImage} and next image with {Constants.NextImage}.";
+                            break;
+                        case CATEGORY.SERIES:
+                            categoryDescription = "Series roll";
+                            break;
+                    }
+
+                    if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                    {
+                        title = TagParser.BuildTitle(postData.TagName);
+                        seriesNameEscaped = TagParser.EscapeUnderscore(postData.SeriesName);
+
                         embed.WithTitle(title)
-                            .AddField("Character ID", postData.PostId)
-                            .AddField("Series Name", seriesNameEscaped)
-                            .WithDescription($"React with {Constants.rerollCharacter.Name} to reroll character, " +
-                            $"{Constants.rerollSeries.Name} to reroll from the same series.")
+                            .AddField("Character ID", postData.TagId, true)
+                            .AddField("Series Name", seriesNameEscaped, true)
+                            .AddField("Category", categoryDescription, true)
+                            .WithDescription(embedDescription)
                             .WithImageUrl(postData.Link)
                             .WithUrl(postData.Link)
                             .WithAuthor(Context.Client.CurrentUser)
-                            .WithFooter(footer => footer.Text = Constants.FooterText + Context.User)
+                            .WithFooter($"Image {postData.PostIndex + 1} of {_cacheService.CacheSize()}")
                             .WithColor(Color.DarkGrey)
                             .WithCurrentTimestamp();
                     }
@@ -361,7 +405,7 @@ namespace LobitaBot
                 }
                 else
                 {
-                    tags = index.LookupTags(searchTerm);
+                    tags = tagIndex.LookupTags(searchTerm);
 
                     if (tags.Count < MaxResults)
                     {
@@ -376,7 +420,7 @@ namespace LobitaBot
 
                     if (suggestions.Count > 0)
                     {
-                        tagData = index.LookupTagData(suggestions);
+                        tagData = tagIndex.LookupTagData(suggestions);
                         pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
                         pageContent = TagParser.ToTagInfoList(pages[0]);
                         int i = 1;
@@ -425,7 +469,7 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex characterIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase());
+            DbCharacterIndex characterIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
             EmbedBuilder embed = new EmbedBuilder();
             PostData postData;
             string tag = characterIndex.LookupRandomTag();
@@ -437,7 +481,7 @@ namespace LobitaBot
                 title = TagParser.BuildTitle(tag);
                 postData = characterIndex.LookupRandomPost(tag);
 
-                while (string.IsNullOrEmpty(postData.Link))
+                while (postData == null)
                 {
                     tag = characterIndex.LookupRandomTag();
                     title = TagParser.BuildTitle(tag);
@@ -447,13 +491,14 @@ namespace LobitaBot
                 seriesNameEscaped = TagParser.EscapeUnderscore(postData.SeriesName);
 
                 embed.WithTitle(title)
-                    .AddField("Character ID", postData.PostId)
-                    .AddField("Series Name", seriesNameEscaped)
-                    .WithDescription($"React with {Constants.rerollRandom} to reroll a random character.")
+                    .AddField("Character ID", postData.TagId, true)
+                    .AddField("Series Name", seriesNameEscaped, true)
+                    .AddField("Category", "Random roll", true)
+                    .WithDescription($"React with {Constants.RerollRandom} to reroll a random character.")
                     .WithImageUrl(postData.Link)
                     .WithUrl(postData.Link)
                     .WithAuthor(Context.Client.CurrentUser)
-                    .WithFooter(footer => footer.Text = Constants.FooterText + Context.User)
+                    .WithFooter($"Image {postData.PostIndex + 1} of {_cacheService.CacheSize()}")
                     .WithColor(Color.DarkGrey)
                     .WithCurrentTimestamp();
             }
@@ -479,6 +524,9 @@ namespace LobitaBot
             IEmbed msgEmbed = msg.Embeds.First();
             var embedFields = msgEmbed.Fields;
             string embedTitle = msgEmbed.Title;
+            string footerText = msgEmbed.Footer.ToString();
+            int imageIndex = 0;
+            int numImages = 0;
             string characterId;
             string seriesName;
             EmbedBuilder embedBuilder;
@@ -486,63 +534,108 @@ namespace LobitaBot
             PageData pageData;
             bool success;
 
-            if (reaction.Emote.Name == Constants.rerollCharacter.Name)
+            if (reaction.Emote.Name == Constants.RerollCharacter.Name)
             {
                 characterId = embedFields[0].Value;
-                embedBuilder = SearchAsync(characterId, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase())).Result;
+                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
 
                 if (embedBuilder != null)
                 {
-                    embedBuilder.WithFooter(Constants.FooterText + msg.Author);
-
                     embed = embedBuilder.Build();
                     var toSend = await channel.SendMessageAsync(embed: embed);
 
                     if (embed.Image != null)
                     {
-                        await toSend.AddReactionAsync(Constants.rerollCharacter);
-                        await toSend.AddReactionAsync(Constants.rerollSeries);
+                        await toSend.AddReactionAsync(Constants.RerollCharacter);
+                        await toSend.AddReactionAsync(Constants.RerollSeries);
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
                     }
                 }
             }
-            else if (reaction.Emote.Name == Constants.rerollSeries.Name)
+            else if (reaction.Emote.Name == Constants.RerollSeries.Name)
             {
                 seriesName = TagParser.Format(embedFields[1].Value);
-                embedBuilder = SearchAsync(seriesName, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase())).Result;
+                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
 
                 if (embedBuilder != null)
                 {
-                    embedBuilder.WithFooter(Constants.FooterText + msg.Author);
-
                     embed = embedBuilder.Build();
                     var toSend = await channel.SendMessageAsync(embed: embed);
 
                     if (embed.Image != null)
                     {
-                        await toSend.AddReactionAsync(Constants.rerollCharacter);
-                        await toSend.AddReactionAsync(Constants.rerollSeries);
+                        await toSend.AddReactionAsync(Constants.RerollCharacter);
+                        await toSend.AddReactionAsync(Constants.RerollSeries);
                     }
                 }
             }
-            else if (reaction.Emote.Name == Constants.rerollRandom.Name)
+            else if (reaction.Emote.Name == Constants.PreviousImage.Name)
+            {
+                characterId = embedFields[0].Value;
+                footerText.Split(" ").First(i => int.TryParse(i, out imageIndex));
+                footerText.Split(" ").Last(i => int.TryParse(i, out numImages));
+
+                if (imageIndex > 1)
+                {
+                    embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService), imageIndex - 1, ROLL_SEQUENCE.PREVIOUS).Result;
+
+                    if (embedBuilder != null)
+                    {
+                        embed = embedBuilder.Build();
+                        var toSend = await channel.SendMessageAsync(embed: embed);
+
+                        if (embed.Image != null)
+                        {
+                            await toSend.AddReactionAsync(Constants.RerollCharacter);
+                            await toSend.AddReactionAsync(Constants.RerollSeries);
+                            await toSend.AddReactionAsync(Constants.PreviousImage);
+                            await toSend.AddReactionAsync(Constants.NextImage);
+                        }
+                    }
+                }
+            }
+            else if (reaction.Emote.Name == Constants.NextImage.Name)
+            {
+                characterId = embedFields[0].Value;
+                footerText.Split(" ").First(i => int.TryParse(i, out imageIndex));
+                footerText.Split(" ").Last(i => int.TryParse(i, out numImages));
+
+                if (imageIndex < numImages)
+                {
+                    embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService), imageIndex - 1, ROLL_SEQUENCE.NEXT).Result;
+
+                    if (embedBuilder != null)
+                    {
+                        embed = embedBuilder.Build();
+                        var toSend = await channel.SendMessageAsync(embed: embed);
+
+                        if (embed.Image != null)
+                        {
+                            await toSend.AddReactionAsync(Constants.RerollCharacter);
+                            await toSend.AddReactionAsync(Constants.RerollSeries);
+                            await toSend.AddReactionAsync(Constants.PreviousImage);
+                            await toSend.AddReactionAsync(Constants.NextImage);
+                        }
+                    }
+                }
+            }
+            else if (reaction.Emote.Name == Constants.RerollRandom.Name)
             {
                 embedBuilder = RandomPost().Result;
 
-
                 if (embedBuilder != null)
                 {
-                    embedBuilder.WithFooter(Constants.FooterText + msg.Author);
-
                     embed = embedBuilder.Build();
                     var toSend = await channel.SendMessageAsync(embed: embed);
 
                     if (embed.Image != null)
                     {
-                        await toSend.AddReactionAsync(Constants.rerollRandom);
+                        await toSend.AddReactionAsync(Constants.RerollRandom);
                     }
                 }
             }
-            else if (reaction.Emote.Name == Constants.pageBack.Name)
+            else if (reaction.Emote.Name == Constants.PageBack.Name)
             {
                 success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
 
@@ -555,7 +648,7 @@ namespace LobitaBot
                     await msg.ModifyAsync(msg => msg.Embed = builder.Build());
                 }
             }
-            else if (reaction.Emote.Name == Constants.pageForward.Name)
+            else if (reaction.Emote.Name == Constants.PageForward.Name)
             {
                 success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
 
@@ -568,7 +661,7 @@ namespace LobitaBot
                     await msg.ModifyAsync(msg => msg.Embed = builder.Build());
                 }
             }
-            else if (reaction.Emote.Name == Constants.sortAlphabetical.Name)
+            else if (reaction.Emote.Name == Constants.SortAlphabetical.Name)
             {
                 success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
 
@@ -581,7 +674,7 @@ namespace LobitaBot
                     await msg.ModifyAsync(msg => msg.Embed = builder.Build());
                 }
             }
-            else if (reaction.Emote.Name == Constants.sortNumerical.Name)
+            else if (reaction.Emote.Name == Constants.SortNumerical.Name)
             {
                 success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
 
@@ -594,7 +687,7 @@ namespace LobitaBot
                     await msg.ModifyAsync(msg => msg.Embed = builder.Build());
                 }
             }
-            else if (reaction.Emote.Name == Constants.changeOrder.Name)
+            else if (reaction.Emote.Name == Constants.ChangeOrder.Name)
             {
                 success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
 

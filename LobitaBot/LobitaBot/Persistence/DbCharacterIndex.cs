@@ -7,20 +7,60 @@ namespace LobitaBot
 {
     public class DbCharacterIndex : DbIndex, ITagIndex
     {
-        public DbCharacterIndex(string dbName) : base(dbName) { }
+        public DbCharacterIndex(string dbName, CacheService cacheService) : base(dbName, cacheService) { }
 
-        public new PostData LookupRandomPost(string searchTerm)
+        public PostData LookupRandomPost(string searchTerm)
         {
-            searchTerm = TagParser.EscapeApostrophe(searchTerm);
+            if (_cacheService.CharacterInCache(searchTerm) && _cacheService.CharacterAloneInCache(searchTerm))
+            {
+                return _cacheService.CacheRandom();
+            }
 
+            searchTerm = TagParser.EscapeApostrophe(searchTerm);
             string postQuery =
                 $"SELECT t.id, t.name, l.url, s.name " +
                 $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}' " +
-                $"ORDER BY RAND() " +
-                $"LIMIT 1";
+                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
-            return base.LookupRandomPost(postQuery);
+            PopulateCache(postQuery);
+
+            return _cacheService.CacheRandom();
+        }
+
+        public PostData LookupNextPost(string searchTerm, int index)
+        {
+            if (_cacheService.CharacterInCache(searchTerm))
+            {
+                return _cacheService.CacheNext(index);
+            }
+
+            searchTerm = TagParser.EscapeApostrophe(searchTerm);
+            string postQuery =
+                $"SELECT t.id, t.name, l.url, s.name " +
+                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
+
+            PopulateCache(postQuery);
+
+            return _cacheService.CacheNext(index);
+        }
+
+        public PostData LookupPreviousPost(string searchTerm, int index)
+        {
+            if (_cacheService.CharacterInCache(searchTerm))
+            {
+                return _cacheService.CachePrevious(index);
+            }
+
+            searchTerm = TagParser.EscapeApostrophe(searchTerm);
+            string postQuery =
+                $"SELECT t.id, t.name, l.url, s.name " +
+                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
+
+            PopulateCache(postQuery);
+
+            return _cacheService.CachePrevious(index);
         }
 
 
