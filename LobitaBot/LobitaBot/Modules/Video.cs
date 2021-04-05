@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace LobitaBot
 {
+    [DontAutoLoad]
     public class Video : ModuleBase<SocketCommandContext>
     {
         private readonly VideoService _videoService;
