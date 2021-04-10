@@ -29,7 +29,7 @@ namespace LobitaBot
 
         public PostData LookupNextPost(string searchTerm, int index)
         {
-            if (_cacheService.CharacterInCache(searchTerm))
+            if (_cacheService.CharacterInCache(searchTerm) && _cacheService.CharacterAloneInCache(searchTerm))
             {
                 return _cacheService.CacheNext(index);
             }
@@ -47,7 +47,7 @@ namespace LobitaBot
 
         public PostData LookupPreviousPost(string searchTerm, int index)
         {
-            if (_cacheService.CharacterInCache(searchTerm))
+            if (_cacheService.CharacterInCache(searchTerm) && _cacheService.CharacterAloneInCache(searchTerm))
             {
                 return _cacheService.CachePrevious(index);
             }
