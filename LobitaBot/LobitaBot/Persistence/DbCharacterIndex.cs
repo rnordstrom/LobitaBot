@@ -205,5 +205,39 @@ namespace LobitaBot
 
             return series;
         }
+
+        public List<string> CharactersInPost(string postUrl)
+        {
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            string postQuery =
+                $"SELECT t.name " +
+                $"FROM tags AS t, links AS l " +
+                $"WHERE t.id = l.tag_id AND l.url = '{postUrl}'";
+
+            List<string> characters = new List<string>();
+
+            try
+            {
+                Conn.Open();
+
+                cmd = new MySqlCommand(postQuery, Conn);
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    characters.Add((string)rdr[0]);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            Conn.Close();
+
+            return characters;
+        }
     }
 }

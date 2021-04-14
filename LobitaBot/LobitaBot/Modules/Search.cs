@@ -86,6 +86,7 @@ namespace LobitaBot
                 {
                     await toSend.AddReactionAsync(Constants.RerollCharacter);
                     await toSend.AddReactionAsync(Constants.RerollSeries);
+                    await toSend.AddReactionAsync(Constants.Characters);
                     await toSend.AddReactionAsync(Constants.PreviousImage);
                     await toSend.AddReactionAsync(Constants.NextImage);
                 }
@@ -123,6 +124,7 @@ namespace LobitaBot
                 {
                     await toSend.AddReactionAsync(Constants.RerollCharacter);
                     await toSend.AddReactionAsync(Constants.RerollSeries);
+                    await toSend.AddReactionAsync(Constants.Characters);
                 }
                 else
                 {
@@ -152,13 +154,9 @@ namespace LobitaBot
 
             DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
             DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
-            EmbedBuilder embed = new EmbedBuilder();
-            List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
             int id;
-            ulong msgId;
             string tag;
             string seriesNameEscaped;
-            List<string> pageContent;
 
             if (int.TryParse(seriesName, out id))
             {
@@ -177,29 +175,12 @@ namespace LobitaBot
             {
                 List<string> characters = seriesIndex.CharactersInSeries(seriesName);
                 List<TagData> characterData = charIndex.LookupTagData(characters);
-                int i = 1;
 
                 pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
-                pageContent = TagParser.ToTagInfoList(pages[0]);
 
-                foreach (string s in pageContent)
-                {
-                    fields.Add(new EmbedFieldBuilder()
-                        .WithName($"{i}.")
-                        .WithValue(s)
-                        .WithIsInline(IsInline));
-
-                    i++;
-                }
-
-                embed.WithTitle(SuggestionTitle)
-                    .WithFields(fields)
-                    .WithDescription(SuggestionDescription)
-                    .WithFooter($"Page 1 of {pages.Count}");
-
+                EmbedBuilder embed = BuildSuggestionsEmbed(pages);
                 var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-
-                msgId = toSend.Id;
+                ulong msgId = toSend.Id;
                 PageData pageData = new PageData(pages);
 
                 _pageService.AddLimited(msgId, pageData);
@@ -228,13 +209,9 @@ namespace LobitaBot
 
             DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
             DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
-            EmbedBuilder embed = new EmbedBuilder();
-            List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
             int id;
-            ulong msgId;
             string tag;
             string charNameEscaped;
-            List<string> pageContent;
 
             if (int.TryParse(charName, out id))
             {
@@ -253,29 +230,12 @@ namespace LobitaBot
             {
                 List<string> series = charIndex.SeriesWithCharacter(charName);
                 List<TagData> seriesData = seriesIndex.LookupTagData(series);
-                int i = 1;
 
                 pages = TagParser.CompileSuggestions(seriesData, EmbedBuilder.MaxFieldCount);
-                pageContent = TagParser.ToTagInfoList(pages[0]);
-
-                foreach (string s in pageContent)
-                {
-                    fields.Add(new EmbedFieldBuilder()
-                        .WithName($"{i}.")
-                        .WithValue(s)
-                        .WithIsInline(IsInline));
-
-                    i++;
-                }
-
-                embed.WithTitle(SuggestionTitle)
-                    .WithFields(fields)
-                    .WithDescription(SuggestionDescription)
-                    .WithFooter($"Page 1 of {pages.Count}");
-
+                
+                EmbedBuilder embed = BuildSuggestionsEmbed(pages);
                 var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-
-                msgId = toSend.Id;
+                ulong msgId = toSend.Id;
                 PageData pageData = new PageData(pages);
 
                 _pageService.AddLimited(msgId, pageData);
@@ -303,6 +263,7 @@ namespace LobitaBot
                 var toSend = await Context.Channel.SendMessageAsync(embed: embedBuilder.Build());
 
                 await toSend.AddReactionAsync(Constants.RerollRandom);
+                await toSend.AddReactionAsync(Constants.Characters);
             }
         }
 
@@ -337,7 +298,8 @@ namespace LobitaBot
                 List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
                 List<string> pageContent;
                 string embedDescription = $"React with {Constants.RerollCharacter.Name} to reroll character, " + 
-                    $"{Constants.RerollSeries.Name} to reroll from the same series.";
+                    $"{Constants.RerollSeries.Name} to reroll from the same series. " + Environment.NewLine +
+                    $"Use {Constants.Characters} to list all characters in the image.";
                 string categoryDescription = "";
 
                 if (int.TryParse(searchTerm, out id))
@@ -494,7 +456,8 @@ namespace LobitaBot
                     .AddField("Character ID", postData.TagId, true)
                     .AddField("Series Name", seriesNameEscaped, true)
                     .AddField("Category", "Random roll", true)
-                    .WithDescription($"React with {Constants.RerollRandom} to reroll a random character.")
+                    .WithDescription($"React with {Constants.RerollRandom} to reroll a random character." +
+                        $"Use {Constants.Characters} to list all characters in the image.")
                     .WithImageUrl(postData.Link)
                     .WithUrl(postData.Link)
                     .WithAuthor(Context.Client.CurrentUser)
@@ -512,6 +475,31 @@ namespace LobitaBot
             return embed;
         }
 
+        private EmbedBuilder BuildSuggestionsEmbed(List<List<TagData>> pages)
+        {
+            EmbedBuilder embed = new EmbedBuilder();
+            List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
+            List<string> pageContent = TagParser.ToTagInfoList(pages[0]);
+            int i = 1;
+
+            foreach (string s in pageContent)
+            {
+                fields.Add(new EmbedFieldBuilder()
+                    .WithName($"{i}.")
+                    .WithValue(s)
+                    .WithIsInline(IsInline));
+
+                i++;
+            }
+
+            embed.WithTitle(SuggestionTitle)
+                .WithFields(fields)
+                .WithDescription(SuggestionDescription)
+                .WithFooter($"Page 1 of {pages.Count}");
+
+            return embed;
+        }
+
         public async Task ReactionAdded_Event(Cacheable<IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction)
         {
             var msg = message.GetOrDownloadAsync().Result;
@@ -524,6 +512,7 @@ namespace LobitaBot
             IEmbed msgEmbed = msg.Embeds.First();
             var embedFields = msgEmbed.Fields;
             string embedTitle = msgEmbed.Title;
+            string embedUrl = msgEmbed.Url;
             string footerText = msgEmbed.Footer.ToString();
             int imageIndex = 0;
             int numImages = 0;
@@ -548,6 +537,7 @@ namespace LobitaBot
                     {
                         await toSend.AddReactionAsync(Constants.RerollCharacter);
                         await toSend.AddReactionAsync(Constants.RerollSeries);
+                        await toSend.AddReactionAsync(Constants.Characters);
                         await toSend.AddReactionAsync(Constants.PreviousImage);
                         await toSend.AddReactionAsync(Constants.NextImage);
                     }
@@ -567,6 +557,7 @@ namespace LobitaBot
                     {
                         await toSend.AddReactionAsync(Constants.RerollCharacter);
                         await toSend.AddReactionAsync(Constants.RerollSeries);
+                        await toSend.AddReactionAsync(Constants.Characters);
                     }
                 }
             }
@@ -589,6 +580,7 @@ namespace LobitaBot
                         {
                             await toSend.AddReactionAsync(Constants.RerollCharacter);
                             await toSend.AddReactionAsync(Constants.RerollSeries);
+                            await toSend.AddReactionAsync(Constants.Characters);
                             await toSend.AddReactionAsync(Constants.PreviousImage);
                             await toSend.AddReactionAsync(Constants.NextImage);
                         }
@@ -614,11 +606,34 @@ namespace LobitaBot
                         {
                             await toSend.AddReactionAsync(Constants.RerollCharacter);
                             await toSend.AddReactionAsync(Constants.RerollSeries);
+                            await toSend.AddReactionAsync(Constants.Characters);
                             await toSend.AddReactionAsync(Constants.PreviousImage);
                             await toSend.AddReactionAsync(Constants.NextImage);
                         }
                     }
                 }
+            }
+            else if (reaction.Emote.Name == Constants.Characters.Name)
+            {
+                DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
+                List<string> charsInPost = charIndex.CharactersInPost(embedUrl);
+                List<TagData> charData = charIndex.LookupTagData(charsInPost);
+
+                pages = TagParser.CompileSuggestions(charData, EmbedBuilder.MaxFieldCount);
+                pageData = new PageData(pages);
+
+                embedBuilder = BuildSuggestionsEmbed(pages);
+                var toSend = await channel.SendMessageAsync(embed: embedBuilder.Build());
+                ulong msgId = toSend.Id;
+
+                _pageService.AddLimited(msgId, pageData);
+
+                await toSend.AddReactionAsync(Constants.PageBack);
+                await toSend.AddReactionAsync(Constants.PageForward);
+                await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                await toSend.AddReactionAsync(Constants.SortNumerical);
+                await toSend.AddReactionAsync(Constants.ChangeOrder);
+
             }
             else if (reaction.Emote.Name == Constants.RerollRandom.Name)
             {

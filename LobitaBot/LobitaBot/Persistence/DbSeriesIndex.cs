@@ -25,7 +25,9 @@ namespace LobitaBot
             string postQuery =
                 $"SELECT t.id, t.name, l.url, s.name " +
                 $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND s.name = '{searchTerm}'";
+                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND s.name = '{searchTerm}' " +
+                $"ORDER BY RAND() " +
+                $"LIMIT 1000";
 
             PopulateCache(postQuery);
 
@@ -34,41 +36,11 @@ namespace LobitaBot
 
         public PostData LookupNextPost(string searchTerm, int index)
         {
-            /* if (IsInCache(searchTerm))
-            {
-                return CacheNext(index);
-            }
-
-            searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name " +
-                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND s.name = '{searchTerm}'";
-
-            PopulateCache(postQuery);
-
-            return CacheNext(index); */
-
             throw new NotImplementedException();
         }
 
         public PostData LookupPreviousPost(string searchTerm, int index)
         {
-            /* if (IsInCache(searchTerm))
-            {
-                return CachePrevious(index);
-            }
-
-            searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name " +
-                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND s.name = '{searchTerm}'";
-
-            PopulateCache(postQuery);
-
-            return CachePrevious(index); */
-
             throw new NotImplementedException();
         }
 

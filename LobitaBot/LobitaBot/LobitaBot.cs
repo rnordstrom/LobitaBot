@@ -23,6 +23,7 @@ namespace LobitaBot
         public static Emoji ChangeOrder = new Emoji("↕️");
         public static Emoji NextImage = new Emoji("▶️");
         public static Emoji PreviousImage = new Emoji("◀️");
+        public static Emoji Characters = new Emoji("👥");
     }
 
     class LobitaBot
