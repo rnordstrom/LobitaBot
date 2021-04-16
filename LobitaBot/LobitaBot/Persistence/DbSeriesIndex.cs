@@ -99,6 +99,8 @@ namespace LobitaBot
 
         public List<string> CharactersInSeries(string seriesName)
         {
+            seriesName = TagParser.EscapeApostrophe(seriesName);
+
             MySqlCommand cmd;
             MySqlDataReader rdr;
 
