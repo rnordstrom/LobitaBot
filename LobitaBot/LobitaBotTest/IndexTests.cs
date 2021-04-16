@@ -6,8 +6,10 @@ namespace LobitaBot.Tests
     [TestClass()]
     public class IndexTests
     {
-        DbCharacterIndex charIndex = new DbCharacterIndex("tagdb_test", new CacheService());
-        DbSeriesIndex seriesIndex = new DbSeriesIndex("tagdb_test", new CacheService());
+        DbCharacterIndex charIndex = 
+            new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
+        DbSeriesIndex seriesIndex = 
+            new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
         private string exampleTag = "gawr_gura";
         private string withApostrophe = "ninomae_ina'nis";
         private string nonExistant = "couldneverexist";
@@ -157,6 +159,20 @@ namespace LobitaBot.Tests
 
             Assert.AreEqual(1, series.Count);
             Assert.IsTrue(series.Contains(seriesName));
+        }
+
+        [TestMethod]
+        public void TestCharactersInPost()
+        {
+            List<string> post1 = charIndex.CharactersInPost(1);
+            List<string> post2 = charIndex.CharactersInPost(3);
+
+            Assert.AreEqual(1, post1.Count);
+            Assert.AreEqual(2, post2.Count);
+
+            Assert.IsTrue(post1.Contains(exampleTag));
+            Assert.IsTrue(post2.Contains(exampleTag));
+            Assert.IsTrue(post2.Contains(withApostrophe));
         }
     }
 }

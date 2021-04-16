@@ -38,7 +38,7 @@ namespace LobitaBot
 
                 while (rdr.Read())
                 {
-                    _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++));
+                    _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++, (int)rdr[4]));
                 }
             }
             catch (Exception e)

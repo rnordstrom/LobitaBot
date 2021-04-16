@@ -11,6 +11,9 @@ namespace LobitaBot
     {
         public const string Prefix = "oka.";
         public const string FooterText = "Requested by ";
+        public const string ProductionConfig = "production";
+        public const string TestConfig = "test";
+        public const string ConfigFile = "lobitaconfig.xml";
         public static string BaseAddress = Environment.GetEnvironmentVariable("PUBLIC_IP");
         public static string WorkingDirectory = Directory.GetCurrentDirectory();
         public static Emoji RerollSeries = new Emoji("🔁");

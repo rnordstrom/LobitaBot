@@ -6,7 +6,8 @@ namespace LobitaBot.Tests
     [TestClass()]
     public class ParseTagTests
     {
-        private ITagIndex index = new DbCharacterIndex("tagdb_test", new CacheService());
+        private ITagIndex index = 
+            new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
         private string exampleTag = "gawr_gura";
         private string exampleTag2 = "hilda_valentine_goneril";
         string partial = "hilda_valentine";

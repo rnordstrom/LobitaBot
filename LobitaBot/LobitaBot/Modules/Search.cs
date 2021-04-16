@@ -24,10 +24,11 @@ namespace LobitaBot
 
     public class PostData
     {
-        public PostData(int tagId, string tagName, string link, string seriesName, int postIndex)
+        public PostData(int tagId, string tagName, string link, string seriesName, int postIndex, int linkId)
         {
             TagId = tagId;
             TagName = tagName;
+            LinkId = linkId;
             Link = link;
             SeriesName = seriesName;
             PostIndex = postIndex;
@@ -38,6 +39,7 @@ namespace LobitaBot
         public string SeriesName { get; }
         public string Link { get; }
         public int PostIndex { get; }
+        public int LinkId { get; }
     };
 
     enum ROLL_SEQUENCE
@@ -73,7 +75,7 @@ namespace LobitaBot
         public async Task CharacterAsync(string searchTerm = null)
         {
             EmbedBuilder embedBuilder = 
-                SearchAsync(searchTerm, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
+                SearchAsync(searchTerm, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
             ulong msgId;
             PageData pageData;
 
@@ -111,7 +113,7 @@ namespace LobitaBot
         public async Task SeriesAsync(string searchTerm = null)
         {
             EmbedBuilder embedBuilder 
-                = SearchAsync(searchTerm, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
+                = SearchAsync(searchTerm, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
             ulong msgId;
             PageData pageData;
 
@@ -152,8 +154,8 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
-            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
             int id;
             string tag;
             string seriesNameEscaped;
@@ -207,8 +209,8 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
             int id;
             string tag;
             string charNameEscaped;
@@ -300,7 +302,6 @@ namespace LobitaBot
                 string embedDescription = $"React with {Constants.RerollCharacter.Name} to reroll character, " + 
                     $"{Constants.RerollSeries.Name} to reroll from the same series. " + Environment.NewLine +
                     $"Use {Constants.Characters} to list all characters in the image.";
-                string categoryDescription = "";
 
                 if (int.TryParse(searchTerm, out id))
                 {
@@ -332,12 +333,8 @@ namespace LobitaBot
                     switch (category)
                     {
                         case CATEGORY.CHARACTER:
-                            categoryDescription = "Character roll";
                             embedDescription += Environment.NewLine +
                                 $"View previous image with {Constants.PreviousImage} and next image with {Constants.NextImage}.";
-                            break;
-                        case CATEGORY.SERIES:
-                            categoryDescription = "Series roll";
                             break;
                     }
 
@@ -348,8 +345,8 @@ namespace LobitaBot
 
                         embed.WithTitle(title)
                             .AddField("Character ID", postData.TagId, true)
+                            .AddField("Post ID", postData.LinkId, true)
                             .AddField("Series Name", seriesNameEscaped, true)
-                            .AddField("Category", categoryDescription, true)
                             .WithDescription(embedDescription)
                             .WithImageUrl(postData.Link)
                             .WithUrl(postData.Link)
@@ -431,7 +428,7 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex characterIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
+            DbCharacterIndex characterIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
             EmbedBuilder embed = new EmbedBuilder();
             PostData postData;
             string tag = characterIndex.LookupRandomTag();
@@ -454,8 +451,8 @@ namespace LobitaBot
 
                 embed.WithTitle(title)
                     .AddField("Character ID", postData.TagId, true)
+                    .AddField("Post ID", postData.LinkId, true)
                     .AddField("Series Name", seriesNameEscaped, true)
-                    .AddField("Category", "Random roll", true)
                     .WithDescription($"React with {Constants.RerollRandom} to reroll a random character." +
                         $"Use {Constants.Characters} to list all characters in the image.")
                     .WithImageUrl(postData.Link)
@@ -512,7 +509,6 @@ namespace LobitaBot
             IEmbed msgEmbed = msg.Embeds.First();
             var embedFields = msgEmbed.Fields;
             string embedTitle = msgEmbed.Title;
-            string embedUrl = msgEmbed.Url;
             string footerText = msgEmbed.Footer.ToString();
             int imageIndex = 0;
             int numImages = 0;
@@ -526,7 +522,7 @@ namespace LobitaBot
             if (reaction.Emote.Name == Constants.RerollCharacter.Name)
             {
                 characterId = embedFields[0].Value;
-                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
+                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
 
                 if (embedBuilder != null)
                 {
@@ -545,8 +541,9 @@ namespace LobitaBot
             }
             else if (reaction.Emote.Name == Constants.RerollSeries.Name)
             {
-                seriesName = TagParser.Format(embedFields[1].Value);
-                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(), _cacheService)).Result;
+                seriesName = TagParser.Format(embedFields[2].Value);
+                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, 
+                    new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
 
                 if (embedBuilder != null)
                 {
@@ -569,7 +566,11 @@ namespace LobitaBot
 
                 if (imageIndex > 1)
                 {
-                    embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService), imageIndex - 1, ROLL_SEQUENCE.PREVIOUS).Result;
+                    embedBuilder = SearchAsync(characterId, 
+                        CATEGORY.CHARACTER, 
+                        new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService), 
+                        imageIndex - 1, 
+                        ROLL_SEQUENCE.PREVIOUS).Result;
 
                     if (embedBuilder != null)
                     {
@@ -595,7 +596,11 @@ namespace LobitaBot
 
                 if (imageIndex < numImages)
                 {
-                    embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService), imageIndex - 1, ROLL_SEQUENCE.NEXT).Result;
+                    embedBuilder = SearchAsync(characterId, 
+                        CATEGORY.CHARACTER, 
+                        new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService), 
+                        imageIndex - 1, 
+                        ROLL_SEQUENCE.NEXT).Result;
 
                     if (embedBuilder != null)
                     {
@@ -615,8 +620,8 @@ namespace LobitaBot
             }
             else if (reaction.Emote.Name == Constants.Characters.Name)
             {
-                DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(), _cacheService);
-                List<string> charsInPost = charIndex.CharactersInPost(embedUrl);
+                DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+                List<string> charsInPost = charIndex.CharactersInPost(int.Parse(embedFields[1].Value));
                 List<TagData> charData = charIndex.LookupTagData(charsInPost);
 
                 pages = TagParser.CompileSuggestions(charData, EmbedBuilder.MaxFieldCount);
