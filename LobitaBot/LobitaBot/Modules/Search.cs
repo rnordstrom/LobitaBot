@@ -652,6 +652,7 @@ namespace LobitaBot
                     if (embed.Image != null)
                     {
                         await toSend.AddReactionAsync(Constants.RerollRandom);
+                        await toSend.AddReactionAsync(Constants.Characters);
                     }
                 }
             }
