@@ -454,6 +454,7 @@ namespace LobitaBot
                     .AddField("Post ID", postData.LinkId, true)
                     .AddField("Series Name", seriesNameEscaped, true)
                     .WithDescription($"React with {Constants.RerollRandom} to reroll a random character." +
+                        Environment.NewLine +
                         $"Use {Constants.Characters} to list all characters in the image.")
                     .WithImageUrl(postData.Link)
                     .WithUrl(postData.Link)

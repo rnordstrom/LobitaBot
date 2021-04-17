@@ -8,6 +8,7 @@ namespace LobitaBot
     {
         protected MySqlConnection Conn { get; }
         protected CacheService _cacheService;
+        private const int TimeOut = 300;
 
         protected DbIndex(string dbName, CacheService cacheService)
         {
@@ -34,6 +35,7 @@ namespace LobitaBot
                 Conn.Open();
 
                 cmd = new MySqlCommand(postQuery, Conn);
+                cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
 
                 while (rdr.Read())
@@ -60,6 +62,7 @@ namespace LobitaBot
                 Conn.Open();
 
                 cmd = new MySqlCommand(tagQuery, Conn);
+                cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
 
                 while (rdr.Read())
@@ -88,7 +91,7 @@ namespace LobitaBot
                 Conn.Open();
 
                 cmd = new MySqlCommand(dataQuery, Conn);
-
+                cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
 
                 while (rdr.Read())
@@ -117,6 +120,7 @@ namespace LobitaBot
                 Conn.Open();
 
                 cmd = new MySqlCommand(tagQuery, Conn);
+                cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
 
                 while (rdr.Read())
@@ -146,6 +150,7 @@ namespace LobitaBot
                 Conn.Open();
 
                 cmd = new MySqlCommand(tagQuery, Conn);
+                cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
 
                 while (rdr.Read())
