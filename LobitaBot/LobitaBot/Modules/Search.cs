@@ -8,40 +8,6 @@ using System.Threading.Tasks;
 
 namespace LobitaBot
 {
-    public class TagData
-    {
-        public TagData(string tagName, int tagID, long numLinks)
-        {
-            TagName = tagName;
-            TagID = tagID;
-            NumLinks = numLinks;
-        }
-
-        public string TagName { get; }
-        public int TagID { get; }
-        public long NumLinks { get; }
-    };
-
-    public class PostData
-    {
-        public PostData(int tagId, string tagName, string link, string seriesName, int postIndex, int linkId)
-        {
-            TagId = tagId;
-            TagName = tagName;
-            LinkId = linkId;
-            Link = link;
-            SeriesName = seriesName;
-            PostIndex = postIndex;
-        }
-
-        public int TagId { get; }
-        public string TagName { get; }
-        public string SeriesName { get; }
-        public string Link { get; }
-        public int PostIndex { get; }
-        public int LinkId { get; }
-    };
-
     enum ROLL_SEQUENCE
     {
         RANDOM, PREVIOUS, NEXT

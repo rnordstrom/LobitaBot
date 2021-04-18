@@ -1,6 +1,8 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LobitaBot
 {
@@ -9,6 +11,7 @@ namespace LobitaBot
         protected MySqlConnection Conn { get; }
         protected CacheService _cacheService;
         private const int TimeOut = 300;
+        private const int Limit = 1000;
 
         protected DbIndex(string dbName, CacheService cacheService)
         {
@@ -22,19 +25,33 @@ namespace LobitaBot
             _cacheService = cacheService;
         }
 
-        protected void PopulateCache(string postQuery)
+        protected void PopulateCacheAsync(string postQuery)
         {
+            _cacheService.CTS.Cancel();
+
+            try
+            {
+                _cacheService.CacheTask.Wait();
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
             _cacheService.Clear();
+
+            _cacheService.CTS = new CancellationTokenSource();
 
             MySqlCommand cmd;
             MySqlDataReader rdr;
             int i = 0;
+            string postQueryLimit = postQuery + $" LIMIT {Limit}";
 
             try
             {
                 Conn.Open();
 
-                cmd = new MySqlCommand(postQuery, Conn);
+                cmd = new MySqlCommand(postQueryLimit, Conn);
                 cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
 
@@ -42,13 +59,54 @@ namespace LobitaBot
                 {
                     _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++, (int)rdr[4]));
                 }
+
+                rdr.Close();
+
+                _cacheService.CacheTask = Task.Factory.StartNew(() => PopulateCacheAsync(postQueryLimit, i, _cacheService.CTS.Token), TaskCreationOptions.LongRunning);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+
+                Conn.Close();
+            }
+        }
+
+        private Task PopulateCacheAsync(string queryString, int index, CancellationToken token)
+        {
+            long offset = 0;
+            string postQueryOffset;
+            bool endReached = false;
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            while (!endReached && !token.IsCancellationRequested)
+            {
+                offset += Limit;
+                postQueryOffset = queryString + $" OFFSET {offset}";
+
+                cmd = new MySqlCommand(postQueryOffset, Conn);
+                cmd.CommandTimeout = TimeOut;
+                rdr = cmd.ExecuteReader();
+
+                if (rdr.HasRows)
+                {
+                    while (rdr.Read())
+                    {
+                        _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], index++, (int)rdr[4]));
+                    }
+                }
+                else
+                {
+                    endReached = true;
+                }
+
+                rdr.Close();
             }
 
             Conn.Close();
+
+            return Task.CompletedTask;
         }
 
         protected string LookupSingleTag(string tagQuery)
