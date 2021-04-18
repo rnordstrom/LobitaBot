@@ -66,10 +66,10 @@ namespace LobitaBot
         {
             PostData pd = null;
             PostData[] pds = tagCache.ToArray();
+            Array.Sort(pds, (x, y) => x.PostIndex.CompareTo(y.PostIndex));
 
             if (index < tagCache.Count - 1 && index >= 0)
             {
-                Array.Sort(pds, (x, y) => x.PostIndex.CompareTo(y.PostIndex));
 
                 pd = pds[index + 1];
             }
@@ -85,10 +85,10 @@ namespace LobitaBot
         {
             PostData pd = null;
             PostData[] pds = tagCache.ToArray();
+            Array.Sort(pds, (x, y) => x.PostIndex.CompareTo(y.PostIndex));
 
             if (index > 0 && index < tagCache.Count)
             {
-                Array.Sort(pds, (x, y) => x.PostIndex.CompareTo(y.PostIndex));
 
                 pd = pds[index - 1];
             }
