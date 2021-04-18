@@ -11,7 +11,7 @@ namespace LobitaBot
         protected MySqlConnection Conn { get; }
         protected CacheService _cacheService;
         private const int TimeOut = 300;
-        private const int Limit = 1000;
+        private const int Limit = 10000;
 
         protected DbIndex(string dbName, CacheService cacheService)
         {
