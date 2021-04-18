@@ -18,9 +18,9 @@ namespace LobitaBot
 
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
             string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name " +
-                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
+                $"SELECT t.id, t.name, l.url, s.name, l.id " +
+                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
             PopulateCache(postQuery);
 
@@ -36,9 +36,9 @@ namespace LobitaBot
 
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
             string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name " +
-                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
+                $"SELECT t.id, t.name, l.url, s.name, l.id " +
+                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
             PopulateCache(postQuery);
 
@@ -54,9 +54,9 @@ namespace LobitaBot
 
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
             string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name " +
-                $"FROM links AS l, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.tag_id = t.id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
+                $"SELECT t.id, t.name, l.url, s.name, l.id " +
+                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
             PopulateCache(postQuery);
 
@@ -94,8 +94,8 @@ namespace LobitaBot
 
             dataQuery =
                 $"SELECT t.name, t.id, COUNT(l.id) " +
-                $"FROM tags AS t, links AS l " +
-                $"WHERE t.id = l.tag_id AND t.name IN ({sb}) " +
+                $"FROM tags AS t, tag_links AS tl, links AS l " +
+                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND t.name IN ({sb}) " +
                 $"GROUP BY t.name";
 
             return LookupTagData(tags, dataQuery);
@@ -204,6 +204,40 @@ namespace LobitaBot
             Conn.Close();
 
             return series;
+        }
+
+        public List<string> CharactersInPost(int postId)
+        {
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            string postQuery =
+                $"SELECT t.name " +
+                $"FROM tags AS t, tag_links AS tl, links AS l " +
+                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND l.id = {postId}";
+
+            List<string> characters = new List<string>();
+
+            try
+            {
+                Conn.Open();
+
+                cmd = new MySqlCommand(postQuery, Conn);
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    characters.Add((string)rdr[0]);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            Conn.Close();
+
+            return characters;
         }
     }
 }
