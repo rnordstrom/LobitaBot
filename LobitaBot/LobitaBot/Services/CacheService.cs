@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +8,7 @@ namespace LobitaBot
 {
     public class CacheService
     {
-        private List<PostData> tagCache = new List<PostData>();
+        private ConcurrentBag<PostData> tagCache = new ConcurrentBag<PostData>();
         public CancellationTokenSource CTS { get; set; }
         public Task CacheTask { get; set; }
 
@@ -56,7 +56,7 @@ namespace LobitaBot
                 Random rand = new Random();
                 int index = rand.Next(0, tagCache.Count);
 
-                pd = tagCache[index];
+                pd = tagCache.ToArray()[index];
             }
 
             return pd;
@@ -65,14 +65,17 @@ namespace LobitaBot
         public PostData CacheNext(int index)
         {
             PostData pd = null;
+            PostData[] pds = tagCache.ToArray();
 
             if (index < tagCache.Count - 1 && index >= 0)
             {
-                pd = tagCache[index + 1];
+                Array.Sort(pds, (x, y) => x.PostIndex.CompareTo(y.PostIndex));
+
+                pd = pds[index + 1];
             }
             else if (index >= tagCache.Count - 1)
             {
-                pd = tagCache.Last();
+                pd = pds.Last();
             }
 
             return pd;
@@ -81,14 +84,17 @@ namespace LobitaBot
         public PostData CachePrevious(int index)
         {
             PostData pd = null;
+            PostData[] pds = tagCache.ToArray();
 
             if (index > 0 && index < tagCache.Count)
             {
-                pd = tagCache[index - 1];
+                Array.Sort(pds, (x, y) => x.PostIndex.CompareTo(y.PostIndex));
+
+                pd = pds[index - 1];
             }
             else if (index <= 0)
             {
-                pd = tagCache.First();
+                pd = pds.First();
             }
 
             return pd;
