@@ -304,8 +304,11 @@ namespace LobitaBot
                     switch (category)
                     {
                         case CATEGORY.CHARACTER:
-                            embedDescription += Environment.NewLine +
-                                $"View previous image with {Constants.PreviousImage} and next image with {Constants.NextImage}.";
+                            if (_cacheService.CacheSize() < MaxSequentialImages)
+                            {
+                                embedDescription += Environment.NewLine +
+                                  $"View previous image with {Constants.PreviousImage} and next image with {Constants.NextImage}.";
+                            }
                             break;
                     }
 
