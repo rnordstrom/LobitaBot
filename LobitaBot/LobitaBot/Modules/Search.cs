@@ -8,40 +8,6 @@ using System.Threading.Tasks;
 
 namespace LobitaBot
 {
-    public class TagData
-    {
-        public TagData(string tagName, int tagID, long numLinks)
-        {
-            TagName = tagName;
-            TagID = tagID;
-            NumLinks = numLinks;
-        }
-
-        public string TagName { get; }
-        public int TagID { get; }
-        public long NumLinks { get; }
-    };
-
-    public class PostData
-    {
-        public PostData(int tagId, string tagName, string link, string seriesName, int postIndex, int linkId)
-        {
-            TagId = tagId;
-            TagName = tagName;
-            LinkId = linkId;
-            Link = link;
-            SeriesName = seriesName;
-            PostIndex = postIndex;
-        }
-
-        public int TagId { get; }
-        public string TagName { get; }
-        public string SeriesName { get; }
-        public string Link { get; }
-        public int PostIndex { get; }
-        public int LinkId { get; }
-    };
-
     enum ROLL_SEQUENCE
     {
         RANDOM, PREVIOUS, NEXT
@@ -60,7 +26,8 @@ namespace LobitaBot
         private string SuggestionDescription = $"React with {Constants.SortAlphabetical} to sort alphabetically, " +
                     $"{Constants.SortNumerical} to sort by number of posts, and " +
                     $"{Constants.ChangeOrder} to switch between ascending/descending order.";
-        private const int MaxResults = 1000;
+        private const int MaxSearchResults = 1000;
+        private const int MaxSequentialImages = 100;
         private const bool IsInline = false;
         List<List<TagData>> pages;
 
@@ -89,8 +56,12 @@ namespace LobitaBot
                     await toSend.AddReactionAsync(Constants.RerollCharacter);
                     await toSend.AddReactionAsync(Constants.RerollSeries);
                     await toSend.AddReactionAsync(Constants.Characters);
-                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                    await toSend.AddReactionAsync(Constants.NextImage);
+
+                    if (_cacheService.CacheSize() < MaxSequentialImages)
+                    {
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
+                    }
                 }
                 else
                 {
@@ -366,7 +337,7 @@ namespace LobitaBot
                 {
                     tags = tagIndex.LookupTags(searchTerm);
 
-                    if (tags.Count < MaxResults)
+                    if (tags.Count < MaxSearchResults)
                     {
                         suggestions = TagParser.FilterSuggestions(tags, searchTerm);
                     }
@@ -535,8 +506,12 @@ namespace LobitaBot
                         await toSend.AddReactionAsync(Constants.RerollCharacter);
                         await toSend.AddReactionAsync(Constants.RerollSeries);
                         await toSend.AddReactionAsync(Constants.Characters);
-                        await toSend.AddReactionAsync(Constants.PreviousImage);
-                        await toSend.AddReactionAsync(Constants.NextImage);
+
+                        if (_cacheService.CacheSize() < MaxSequentialImages)
+                        {
+                            await toSend.AddReactionAsync(Constants.PreviousImage);
+                            await toSend.AddReactionAsync(Constants.NextImage);
+                        }
                     }
                 }
             }
@@ -583,8 +558,12 @@ namespace LobitaBot
                             await toSend.AddReactionAsync(Constants.RerollCharacter);
                             await toSend.AddReactionAsync(Constants.RerollSeries);
                             await toSend.AddReactionAsync(Constants.Characters);
-                            await toSend.AddReactionAsync(Constants.PreviousImage);
-                            await toSend.AddReactionAsync(Constants.NextImage);
+
+                            if (_cacheService.CacheSize() < MaxSequentialImages)
+                            {
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
+                            }
                         }
                     }
                 }
@@ -613,8 +592,12 @@ namespace LobitaBot
                             await toSend.AddReactionAsync(Constants.RerollCharacter);
                             await toSend.AddReactionAsync(Constants.RerollSeries);
                             await toSend.AddReactionAsync(Constants.Characters);
-                            await toSend.AddReactionAsync(Constants.PreviousImage);
-                            await toSend.AddReactionAsync(Constants.NextImage);
+
+                            if (_cacheService.CacheSize() < MaxSequentialImages)
+                            {
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
+                            }
                         }
                     }
                 }
