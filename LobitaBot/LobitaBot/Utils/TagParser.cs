@@ -39,80 +39,6 @@ namespace LobitaBot
             return sb.ToString();
         }
 
-        public static List<string> FilterSuggestions(List<string> tags, string searchTerm)
-        {
-            List<string> filtered = new List<string>();
-            string replaced;
-
-            foreach (string t in tags)
-            {
-                if (t.Contains('/'))
-                {
-                    replaced = t.Replace('/', '_');
-                }
-                else
-                {
-                    replaced = t;
-                }
-
-                if (searchTerm.Contains("_"))
-                {
-                    if (replaced.Split("(")[0].Contains(searchTerm))
-                    {
-                        filtered.Add(t);
-                    }
-                }
-                else
-                {
-                    if (replaced.Split("(")[0].Split("_").Contains(searchTerm))
-                    {
-                        filtered.Add(t);
-                    }
-                }
-            }
-
-            return filtered;
-        }
-
-        public static List<string> CompileSuggestions(List<TagData> tagData)
-        {
-            List<string> pages = new List<string>();
-            StringBuilder sb = new StringBuilder();
-            string suggestion;
-
-            if (tagData.Count > 0)
-            {
-                sb.Append("```");
-
-                foreach (TagData td in tagData)
-                {
-                    suggestion = $@"<{td.TagID}> {td.TagName} ({td.NumLinks})" + Environment.NewLine;
-
-                    if ((sb.ToString() + suggestion).Length > MaxDescriptionSize)
-                    {
-                        sb.Append("```");
-                        pages.Add(sb.ToString());
-
-                        sb = new StringBuilder("```");
-
-                        sb.Append(suggestion);
-
-                        continue;
-                    }
-                    else
-                    {
-                        sb.Append(suggestion);
-                    }
-                }
-
-                sb.Append("```");
-
-                pages.Add(sb.ToString());
-            }
-
-            return pages;
-        }
-
         public static List<List<TagData>> CompileSuggestions(List<TagData> tagData, int maxNumFields)
         {
             List<List<TagData>> pages = new List<List<TagData>>();
@@ -151,7 +77,7 @@ namespace LobitaBot
 
             foreach (TagData t in tagData)
             {
-                tagInfo.Add(EscapeUnderscore($@"<{t.TagID}> {t.TagName} ({t.NumLinks})"));
+                tagInfo.Add(EscapeUnderscore($@"<{t.TagID}> {t.TagName}"));
             }
 
             return tagInfo;

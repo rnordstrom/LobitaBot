@@ -92,11 +92,7 @@ namespace LobitaBot
                 }
             }
 
-            dataQuery =
-                $"SELECT t.name, t.id, COUNT(l.id) " +
-                $"FROM tags AS t, tag_links AS tl, links AS l " +
-                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND t.name IN ({sb}) " +
-                $"GROUP BY t.name";
+            dataQuery = $"SELECT name, id FROM tags WHERE name IN ({sb})";
 
             return LookupTagData(tags, dataQuery);
         }
@@ -105,7 +101,7 @@ namespace LobitaBot
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
-            string tagQuery = $"SELECT name from tags WHERE name LIKE '%{searchTerm}%'";
+            string tagQuery = $"SELECT name from tags WHERE name LIKE '{searchTerm}'";
 
             return base.LookupTags(tagQuery);
         }
@@ -180,7 +176,7 @@ namespace LobitaBot
             string seriesQuery =
                 $"SELECT s.name " +
                 $"FROM tags AS t, series_tags AS st, series AS s " +
-                $"WHERE t.id = st.tag_id AND st.series_id = s.id AND t.name = '{charName}'";
+                $"WHERE t.id = st.tag_id AND st.series_id = s.id AND t.name LIKE '{charName}'";
 
             List<string> series = new List<string>();
 

@@ -22,7 +22,6 @@ namespace LobitaBot
         public static Emoji PageBack = new Emoji("⏪");
         public static Emoji PageForward = new Emoji("⏩");
         public static Emoji SortAlphabetical = new Emoji("🔠");
-        public static Emoji SortNumerical = new Emoji("🔢");
         public static Emoji ChangeOrder = new Emoji("↕️");
         public static Emoji NextImage = new Emoji("▶️");
         public static Emoji PreviousImage = new Emoji("◀️");

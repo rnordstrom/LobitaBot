@@ -9,7 +9,6 @@ namespace LobitaBot
         public int PageNum { get; set; }
         public DateTime DateTime { get; }
         public bool AlphabeticallySorted { get; set; } = false;
-        public bool NumericallySorted { get; set; } = false;
         public bool SortedAscending { get; set; } = false;
 
         public PageData(List<List<TagData>> pages)

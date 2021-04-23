@@ -2,15 +2,13 @@
 {
     public class TagData
     {
-        public TagData(string tagName, int tagID, long numLinks)
+        public TagData(string tagName, int tagID)
         {
             TagName = tagName;
             TagID = tagID;
-            NumLinks = numLinks;
         }
 
         public string TagName { get; }
         public int TagID { get; }
-        public long NumLinks { get; }
     }
 }

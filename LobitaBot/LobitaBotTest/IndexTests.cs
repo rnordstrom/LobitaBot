@@ -14,15 +14,6 @@ namespace LobitaBot.Tests
         private string withApostrophe = "ninomae_ina'nis";
         private string nonExistant = "couldneverexist";
         private string seriesName = "hololive";
-        private string searchTerm1;
-        private string searchTerm2;
-
-        [TestInitialize]
-        public void Setup()
-        {
-            searchTerm1 = exampleTag.Split("_")[0];
-            searchTerm2 = exampleTag.Split("_")[1];
-        }
 
         [TestMethod]
         public void LookupRandomTest()
@@ -99,8 +90,8 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupTagsTest()
         {
-            Assert.IsTrue(charIndex.LookupTags(searchTerm1).Count != 0);
-            Assert.IsTrue(charIndex.LookupTags(searchTerm2).Count != 0);
+            Assert.IsTrue(charIndex.LookupTags(exampleTag).Count != 0);
+            Assert.IsTrue(charIndex.LookupTags(withApostrophe).Count != 0);
             Assert.IsTrue(charIndex.LookupTags(nonExistant).Count == 0);
 
             Assert.IsTrue(seriesIndex.LookupTags(seriesName).Count != 0);
@@ -118,7 +109,7 @@ namespace LobitaBot.Tests
             List<string> tags = new List<string> { exampleTag, withApostrophe };
             List<TagData> tagData = charIndex.LookupTagData(tags);
 
-            Assert.IsTrue(tagData.Count == tags.Count);
+            Assert.AreEqual(tags.Count, tagData.Count);
 
             foreach (TagData td in tagData)
             {
@@ -126,13 +117,12 @@ namespace LobitaBot.Tests
 
                 Assert.IsFalse(string.IsNullOrEmpty(td.TagName));
                 Assert.IsTrue(td.TagID > 0);
-                Assert.IsTrue(td.NumLinks >= 0);
             }
 
             List<string> series = new List<string> { seriesName };
             List<TagData> seriesData = seriesIndex.LookupTagData(series);
 
-            Assert.IsTrue(seriesData.Count == series.Count);
+            Assert.AreEqual(series.Count, seriesData.Count);
 
             foreach (TagData td in seriesData)
             {
@@ -140,7 +130,6 @@ namespace LobitaBot.Tests
 
                 Assert.IsFalse(string.IsNullOrEmpty(td.TagName));
                 Assert.IsTrue(td.TagID > 0);
-                Assert.IsTrue(td.NumLinks >= 0);
             }
         }
 

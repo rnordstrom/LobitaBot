@@ -37,86 +37,6 @@ namespace LobitaBot.Tests
         }
 
         [TestMethod()]
-        public void FilterSuggestionsTest()
-        {
-            List<string> tags = index.LookupTags(part1);
-            List<string> suggestions = TagParser.FilterSuggestions(tags, part1);
-
-            Assert.IsTrue(suggestions.Count <= tags.Count);
-            Assert.IsTrue(suggestions.Contains(exampleTag));
-
-            tags = index.LookupTags(part2);
-            suggestions = TagParser.FilterSuggestions(tags, part2);
-
-            Assert.IsTrue(suggestions.Count <= tags.Count);
-            Assert.IsTrue(suggestions.Contains(exampleTag));
-
-            tags = index.LookupTags(partial);
-            suggestions = TagParser.FilterSuggestions(tags, partial);
-
-            Assert.IsTrue(suggestions.Count <= tags.Count);
-            Assert.IsTrue(suggestions.Contains(exampleTag2));
-        }
-
-        [TestMethod()]
-        public void CompileSuggestionsTest()
-        {
-            List<string> tags = index.LookupTags(part1);
-            List<string> suggestions = TagParser.FilterSuggestions(tags, part1);
-            List<TagData> tagData = index.LookupTagData(suggestions);
-            List<string> description = TagParser.CompileSuggestions(tagData);
-            bool found = false;
-
-            foreach (string s in description)
-            {
-                Assert.IsTrue(s.Length < TagParser.MaxDescriptionSize);
-
-                if (s.Contains(exampleTag))
-                {
-                    found = true;
-                }
-            }
-
-            Assert.IsTrue(found);
-
-            tags = index.LookupTags(part2);
-            suggestions = TagParser.FilterSuggestions(tags, part2);
-            tagData = index.LookupTagData(suggestions);
-            description = TagParser.CompileSuggestions(tagData);
-            found = false;
-
-            foreach (string s in description)
-            {
-                Assert.IsTrue(s.Length < TagParser.MaxDescriptionSize);
-
-                if (s.Contains(exampleTag))
-                {
-                    found = true;
-                }
-            }
-
-            Assert.IsTrue(found);
-
-            tags = index.LookupTags(partial);
-            suggestions = TagParser.FilterSuggestions(tags, partial);
-            tagData = index.LookupTagData(suggestions);
-            description = TagParser.CompileSuggestions(tagData);
-            found = false;
-
-            foreach (string s in description)
-            {
-                Assert.IsTrue(s.Length < TagParser.MaxDescriptionSize);
-
-                if (s.Contains(exampleTag2))
-                {
-                    found = true;
-                }
-            }
-
-            Assert.IsTrue(found);
-        }
-
-        [TestMethod()]
         public void CompileSuggestionsListTest()
         {
             List<List<TagData>> pages;
@@ -125,7 +45,7 @@ namespace LobitaBot.Tests
 
             for (int i = 0; i < 105; i++)
             {
-                tagData.Add(new TagData("a", 1, 1));
+                tagData.Add(new TagData("a", 1));
             }
 
             pages = TagParser.CompileSuggestions(tagData, MaxFields);
@@ -141,7 +61,7 @@ namespace LobitaBot.Tests
 
             for (int i = 0; i < 100; i++)
             {
-                tagData.Add(new TagData("a", 1, 1));
+                tagData.Add(new TagData("a", 1));
             }
 
             pages = TagParser.CompileSuggestions(tagData, MaxFields);
