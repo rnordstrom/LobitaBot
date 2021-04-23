@@ -196,7 +196,7 @@ namespace LobitaBot
             return tags;
         }
 
-        protected bool TagExists(string tagQuery)
+        protected bool HasExactMatch(string tagQuery, out string matched)
         {
             string tag = "";
             bool exists = false;
@@ -210,13 +210,16 @@ namespace LobitaBot
                 cmd = new MySqlCommand(tagQuery, Conn);
                 cmd.CommandTimeout = TimeOut;
                 rdr = cmd.ExecuteReader();
+                int i = 0;
 
                 while (rdr.Read())
                 {
                     tag = (string)rdr[0];
+
+                    i++;
                 }
 
-                if (!string.IsNullOrEmpty(tag))
+                if (!string.IsNullOrEmpty(tag) && i == 1)
                 {
                     exists = true;
                 }
@@ -227,6 +230,8 @@ namespace LobitaBot
             }
 
             Conn.Close();
+
+            matched = tag;
 
             return exists;
         }

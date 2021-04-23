@@ -281,6 +281,7 @@ namespace LobitaBot
 
                 string tag;
                 string searchTermEscaped;
+                string searchTermMatched;
                 int id;
                 PostData postData = null;
                 List<string> tags;
@@ -303,18 +304,18 @@ namespace LobitaBot
 
                 searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
 
-                if (tagIndex.TagExists(searchTerm))
+                if (tagIndex.HasExactMatch(searchTerm, out searchTermMatched))
                 {
                     switch (rollSequence)
                     {
                         case ROLL_SEQUENCE.RANDOM:
-                            postData = tagIndex.LookupRandomPost(searchTerm);
+                            postData = tagIndex.LookupRandomPost(searchTermMatched);
                             break;
                         case ROLL_SEQUENCE.PREVIOUS:
-                            postData = tagIndex.LookupPreviousPost(searchTerm, postIndex);
+                            postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex);
                             break;
                         case ROLL_SEQUENCE.NEXT:
-                            postData = tagIndex.LookupNextPost(searchTerm, postIndex);
+                            postData = tagIndex.LookupNextPost(searchTermMatched, postIndex);
                             break;
                     }
 
@@ -345,15 +346,15 @@ namespace LobitaBot
                     embed = new EmbedBuilder();
                     tags = tagIndex.LookupTags(searchTerm);
 
-                    if (tags.Count > MaxSearchResults)
-                    {
-                        await ReplyAsync(excessiveResults.Replace("%", searchTerm));
-
-                        return null;
-                    }
-
                     if (tags.Count > 0)
                     {
+                        if (tags.Count > MaxSearchResults)
+                        {
+                            await ReplyAsync(excessiveResults.Replace("%", searchTerm));
+
+                            return null;
+                        }
+
                         tagData = tagIndex.LookupTagData(tags);
                         pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
                         embed = BuildSuggestionsEmbed(pages);

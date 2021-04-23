@@ -85,13 +85,13 @@ namespace LobitaBot
             return base.LookupTags(tagQuery);
         }
 
-        public new bool TagExists(string searchTerm)
+        public new bool HasExactMatch(string searchTerm, out string matched)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
-            string tagQuery = $"SELECT name from series WHERE name = '{searchTerm}'";
+            string tagQuery = $"SELECT name from series WHERE name LIKE '{searchTerm}'";
 
-            return base.TagExists(tagQuery);
+            return base.HasExactMatch(tagQuery, out matched);
         }
 
         public List<string> CharactersInSeries(string seriesName)

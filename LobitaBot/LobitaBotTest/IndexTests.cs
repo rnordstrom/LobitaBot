@@ -80,11 +80,11 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void TagExistsTest()
         {
-            Assert.IsTrue(charIndex.TagExists(exampleTag));
-            Assert.IsTrue(charIndex.TagExists(withApostrophe));
-            Assert.IsFalse(charIndex.TagExists(nonExistant));
+            Assert.IsTrue(charIndex.HasExactMatch(exampleTag));
+            Assert.IsTrue(charIndex.HasExactMatch(withApostrophe));
+            Assert.IsFalse(charIndex.HasExactMatch(nonExistant));
 
-            Assert.IsTrue(seriesIndex.TagExists(seriesName));
+            Assert.IsTrue(seriesIndex.HasExactMatch(seriesName));
         }
 
         [TestMethod]
@@ -100,7 +100,7 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupRandomTagTest()
         {
-            Assert.IsTrue(charIndex.TagExists(charIndex.LookupRandomTag()));
+            Assert.IsTrue(charIndex.HasExactMatch(charIndex.LookupRandomTag()));
         }
 
         [TestMethod]
