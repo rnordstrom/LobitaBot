@@ -77,7 +77,7 @@ namespace LobitaBot
 
             foreach (TagData t in tagData)
             {
-                tagInfo.Add(EscapeUnderscore($@"<{t.TagID}> {t.TagName}"));
+                tagInfo.Add(EscapeUnderscore($@"<{t.TagID}> {t.TagName} ({t.NumLinks})"));
             }
 
             return tagInfo;

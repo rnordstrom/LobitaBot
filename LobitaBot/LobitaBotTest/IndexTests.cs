@@ -80,11 +80,11 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void TagExistsTest()
         {
-            Assert.IsTrue(charIndex.HasExactMatch(exampleTag));
-            Assert.IsTrue(charIndex.HasExactMatch(withApostrophe));
-            Assert.IsFalse(charIndex.HasExactMatch(nonExistant));
+            Assert.IsTrue(charIndex.HasExactMatch(exampleTag, out string _));
+            Assert.IsTrue(charIndex.HasExactMatch(withApostrophe, out string _));
+            Assert.IsFalse(charIndex.HasExactMatch(nonExistant, out string _));
 
-            Assert.IsTrue(seriesIndex.HasExactMatch(seriesName));
+            Assert.IsTrue(seriesIndex.HasExactMatch(seriesName, out string _));
         }
 
         [TestMethod]
@@ -100,7 +100,7 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupRandomTagTest()
         {
-            Assert.IsTrue(charIndex.HasExactMatch(charIndex.LookupRandomTag()));
+            Assert.IsTrue(charIndex.HasExactMatch(charIndex.LookupRandomTag(), out string _));
         }
 
         [TestMethod]
@@ -117,6 +117,7 @@ namespace LobitaBot.Tests
 
                 Assert.IsFalse(string.IsNullOrEmpty(td.TagName));
                 Assert.IsTrue(td.TagID > 0);
+                Assert.IsTrue(td.NumLinks >= 0);
             }
 
             List<string> series = new List<string> { seriesName };
@@ -130,6 +131,7 @@ namespace LobitaBot.Tests
 
                 Assert.IsFalse(string.IsNullOrEmpty(td.TagName));
                 Assert.IsTrue(td.TagID > 0);
+                Assert.IsTrue(td.NumLinks >= 0);
             }
         }
 

@@ -38,6 +38,7 @@ namespace LobitaBot
 
             PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
             PageIndex[msgId].AlphabeticallySorted = true;
+            PageIndex[msgId].NumericallySorted = false;
             PageIndex[msgId].SortedAscending = true;
         }
 
@@ -58,6 +59,49 @@ namespace LobitaBot
 
             PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
             PageIndex[msgId].AlphabeticallySorted = true;
+            PageIndex[msgId].NumericallySorted = false;
+            PageIndex[msgId].SortedAscending = false;
+        }
+
+        public void SortPostNumAsc(ulong msgId)
+        {
+            PageData pageData = PageIndex[msgId];
+            List<TagData> tagData = new List<TagData>();
+
+            foreach (List<TagData> page in pageData.Pages)
+            {
+                foreach (TagData t in page)
+                {
+                    tagData.Add(t);
+                }
+            }
+
+            tagData.Sort((t1, t2) => t1.NumLinks.CompareTo(t2.NumLinks));
+
+            PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+            PageIndex[msgId].AlphabeticallySorted = false;
+            PageIndex[msgId].NumericallySorted = true;
+            PageIndex[msgId].SortedAscending = true;
+        }
+
+        public void SortPostNumDesc(ulong msgId)
+        {
+            PageData pageData = PageIndex[msgId];
+            List<TagData> tagData = new List<TagData>();
+
+            foreach (List<TagData> page in pageData.Pages)
+            {
+                foreach (TagData t in page)
+                {
+                    tagData.Add(t);
+                }
+            }
+
+            tagData.Sort((t1, t2) => t2.NumLinks.CompareTo(t1.NumLinks));
+
+            PageIndex[msgId].Pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+            PageIndex[msgId].AlphabeticallySorted = false;
+            PageIndex[msgId].NumericallySorted = true;
             PageIndex[msgId].SortedAscending = false;
         }
     }

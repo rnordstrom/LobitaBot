@@ -45,7 +45,7 @@ namespace LobitaBot.Tests
 
             for (int i = 0; i < 105; i++)
             {
-                tagData.Add(new TagData("a", 1));
+                tagData.Add(new TagData("a", 1, 1));
             }
 
             pages = TagParser.CompileSuggestions(tagData, MaxFields);
@@ -61,7 +61,7 @@ namespace LobitaBot.Tests
 
             for (int i = 0; i < 100; i++)
             {
-                tagData.Add(new TagData("a", 1));
+                tagData.Add(new TagData("a", 1, 1));
             }
 
             pages = TagParser.CompileSuggestions(tagData, MaxFields);

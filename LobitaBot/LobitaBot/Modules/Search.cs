@@ -22,10 +22,11 @@ namespace LobitaBot
     {
         private PageService _pageService;
         private CacheService _cacheService;
-        private const string SuggestionTitle = "<Tag ID> Tag Name";
-        private string excessiveResults = "Your search for '%' is too broad! Please be more specific.";
-        private string noResults = "No results found for '%'.";
+        private const string SuggestionTitle = "<Tag ID> Tag Name (#Posts)";
+        private const string ExcessiveResults = "Your search for '%' is too broad! Please be more specific.";
+        private const string NoResults = "No results found for '%'.";
         private string suggestionDescription = $"React with {Constants.SortAlphabetical} to sort alphabetically, " +
+                    $"{Constants.SortNumerical} to sort by number of posts, and " +     
                     $"{Constants.ChangeOrder} to switch between ascending/descending order.";
         private const int MaxSearchResults = 10000;
         private const int MaxSequentialImages = 100;
@@ -74,6 +75,7 @@ namespace LobitaBot
                     await toSend.AddReactionAsync(Constants.PageBack);
                     await toSend.AddReactionAsync(Constants.PageForward);
                     await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
                     await toSend.AddReactionAsync(Constants.ChangeOrder);
                 }
             }
@@ -109,6 +111,7 @@ namespace LobitaBot
                     await toSend.AddReactionAsync(Constants.PageBack);
                     await toSend.AddReactionAsync(Constants.PageForward);
                     await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
                     await toSend.AddReactionAsync(Constants.ChangeOrder);
                 }
             }
@@ -118,6 +121,13 @@ namespace LobitaBot
         [Summary("Lists characters that belong to the specified series.")]
         public async Task InSeriesAsync(string seriesName = null)
         {
+            if (string.IsNullOrEmpty(seriesName))
+            {
+                await ReplyAsync("Usage: oka.in_series series_name");
+
+                return;
+            }
+
             if (!_pageService.HandlerAdded)
             {
                 Context.Client.ReactionAdded += ReactionAdded_Event;
@@ -166,17 +176,18 @@ namespace LobitaBot
                         await toSend.AddReactionAsync(Constants.PageBack);
                         await toSend.AddReactionAsync(Constants.PageForward);
                         await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                        await toSend.AddReactionAsync(Constants.SortNumerical);
                         await toSend.AddReactionAsync(Constants.ChangeOrder);
                     }
                 }
                 else
                 {
-                    await ReplyAsync(excessiveResults.Replace("%", seriesNameEscaped));
+                    await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
                 }
             }
             else
             {
-                await ReplyAsync(noResults.Replace("%", seriesNameEscaped));
+                await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
             }
         }
 
@@ -184,6 +195,13 @@ namespace LobitaBot
         [Summary("Lists series that feature the specified character.")]
         public async Task WithCharacterAsync(string charName = null)
         {
+            if (string.IsNullOrEmpty(charName))
+            {
+                await ReplyAsync("Usage: oka.with_character character_name");
+
+                return;
+            }
+
             if (!_pageService.HandlerAdded)
             {
                 Context.Client.ReactionAdded += ReactionAdded_Event;
@@ -232,17 +250,18 @@ namespace LobitaBot
                         await toSend.AddReactionAsync(Constants.PageBack);
                         await toSend.AddReactionAsync(Constants.PageForward);
                         await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                        await toSend.AddReactionAsync(Constants.SortNumerical);
                         await toSend.AddReactionAsync(Constants.ChangeOrder);
                     }
                 }
                 else
                 {
-                    await ReplyAsync(excessiveResults.Replace("%", charNameEscaped));
+                    await ReplyAsync(ExcessiveResults.Replace("%", charNameEscaped));
                 }
             }
             else
             {
-                await ReplyAsync(noResults.Replace("%", charNameEscaped));
+                await ReplyAsync(NoResults.Replace("%", charNameEscaped));
             }
         }
 
@@ -265,110 +284,118 @@ namespace LobitaBot
         {
             if (string.IsNullOrEmpty(searchTerm))
             {
-                await ReplyAsync("Usage: oka.search search term");
+                string usageString = "Usage: ";
+
+                switch (category)
+                {
+                    case CATEGORY.CHARACTER:
+                        await ReplyAsync(usageString + "oka.character character_name");
+                        break;
+                    case CATEGORY.SERIES:
+                        await ReplyAsync(usageString + "oka.series series_name");
+                        break;
+                }
 
                 return null;
             }
-            else
+
+            if (!_pageService.HandlerAdded)
             {
-                if (!_pageService.HandlerAdded)
+                Context.Client.ReactionAdded += ReactionAdded_Event;
+                _pageService.HandlerAdded = true;
+            }
+
+            searchTerm = TagParser.Format(searchTerm);
+
+            string tag;
+            string searchTermEscaped;
+            string searchTermMatched;
+            int id;
+            PostData postData = null;
+            List<string> tags;
+            List<TagData> tagData;
+            EmbedBuilder embed;
+            List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
+            string embedDescription = $"React with {Constants.RerollCharacter.Name} to reroll character, " + 
+                $"{Constants.RerollSeries.Name} to reroll from the same series. " + Environment.NewLine +
+                $"Use {Constants.Characters} to list all characters in the image.";
+
+            if (int.TryParse(searchTerm, out id))
+            {
+                tag = tagIndex.LookupSingleTag(id);
+
+                if (!string.IsNullOrEmpty(tag))
                 {
-                    Context.Client.ReactionAdded += ReactionAdded_Event;
-                    _pageService.HandlerAdded = true;
+                    searchTerm = tag;
+                }
+            }
+
+            searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
+
+            if (tagIndex.HasExactMatch(searchTerm, out searchTermMatched))
+            {
+                switch (rollSequence)
+                {
+                    case ROLL_SEQUENCE.RANDOM:
+                        postData = tagIndex.LookupRandomPost(searchTermMatched);
+                        break;
+                    case ROLL_SEQUENCE.PREVIOUS:
+                        postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex);
+                        break;
+                    case ROLL_SEQUENCE.NEXT:
+                        postData = tagIndex.LookupNextPost(searchTermMatched, postIndex);
+                        break;
                 }
 
-                searchTerm = TagParser.Format(searchTerm);
-
-                string tag;
-                string searchTermEscaped;
-                string searchTermMatched;
-                int id;
-                PostData postData = null;
-                List<string> tags;
-                List<TagData> tagData;
-                EmbedBuilder embed;
-                List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
-                string embedDescription = $"React with {Constants.RerollCharacter.Name} to reroll character, " + 
-                    $"{Constants.RerollSeries.Name} to reroll from the same series. " + Environment.NewLine +
-                    $"Use {Constants.Characters} to list all characters in the image.";
-
-                if (int.TryParse(searchTerm, out id))
+                switch (category)
                 {
-                    tag = tagIndex.LookupSingleTag(id);
-
-                    if (!string.IsNullOrEmpty(tag))
-                    {
-                        searchTerm = tag;
-                    }
+                    case CATEGORY.CHARACTER:
+                        if (_cacheService.CacheSize() < MaxSequentialImages)
+                        {
+                            embedDescription += Environment.NewLine +
+                                $"View previous image with {Constants.PreviousImage} and next image with {Constants.NextImage}.";
+                        }
+                        break;
                 }
 
-                searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
-
-                if (tagIndex.HasExactMatch(searchTerm, out searchTermMatched))
+                if (postData != null && !string.IsNullOrEmpty(postData.Link))
                 {
-                    switch (rollSequence)
-                    {
-                        case ROLL_SEQUENCE.RANDOM:
-                            postData = tagIndex.LookupRandomPost(searchTermMatched);
-                            break;
-                        case ROLL_SEQUENCE.PREVIOUS:
-                            postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex);
-                            break;
-                        case ROLL_SEQUENCE.NEXT:
-                            postData = tagIndex.LookupNextPost(searchTermMatched, postIndex);
-                            break;
-                    }
-
-                    switch (category)
-                    {
-                        case CATEGORY.CHARACTER:
-                            if (_cacheService.CacheSize() < MaxSequentialImages)
-                            {
-                                embedDescription += Environment.NewLine +
-                                  $"View previous image with {Constants.PreviousImage} and next image with {Constants.NextImage}.";
-                            }
-                            break;
-                    }
-
-                    if (postData != null && !string.IsNullOrEmpty(postData.Link))
-                    {
-                        embed = BuildImageEmbed(postData, embedDescription);
-                    }
-                    else
-                    {
-                        await ReplyAsync($"No images found for '{searchTermEscaped}'.");
-
-                        return null;
-                    }
+                    embed = BuildImageEmbed(postData, embedDescription);
                 }
                 else
                 {
-                    embed = new EmbedBuilder();
-                    tags = tagIndex.LookupTags(searchTerm);
+                    await ReplyAsync($"No images found for '{searchTermEscaped}'.");
 
-                    if (tags.Count > 0)
+                    return null;
+                }
+            }
+            else
+            {
+                embed = new EmbedBuilder();
+                tags = tagIndex.LookupTags(searchTerm);
+
+                if (tags.Count > 0)
+                {
+                    if (tags.Count > MaxSearchResults)
                     {
-                        if (tags.Count > MaxSearchResults)
-                        {
-                            await ReplyAsync(excessiveResults.Replace("%", searchTerm));
-
-                            return null;
-                        }
-
-                        tagData = tagIndex.LookupTagData(tags);
-                        pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
-                        embed = BuildSuggestionsEmbed(pages);
-                    }
-                    else
-                    {
-                        await ReplyAsync(noResults.Replace("%", searchTermEscaped));
+                        await ReplyAsync(ExcessiveResults.Replace("%", searchTerm));
 
                         return null;
                     }
-                }
 
-                return embed;
+                    tagData = tagIndex.LookupTagData(tags);
+                    pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+                    embed = BuildSuggestionsEmbed(pages);
+                }
+                else
+                {
+                    await ReplyAsync(NoResults.Replace("%", searchTermEscaped));
+
+                    return null;
+                }
             }
+
+            return embed;
         }
 
         private async Task<EmbedBuilder> RandomPost()
@@ -613,6 +640,7 @@ namespace LobitaBot
                 await toSend.AddReactionAsync(Constants.PageBack);
                 await toSend.AddReactionAsync(Constants.PageForward);
                 await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                await toSend.AddReactionAsync(Constants.SortNumerical);
                 await toSend.AddReactionAsync(Constants.ChangeOrder);
 
             }
@@ -671,6 +699,19 @@ namespace LobitaBot
                     await msg.ModifyAsync(msg => msg.Embed = builder.Build());
                 }
             }
+            else if (reaction.Emote.Name == Constants.SortNumerical.Name)
+            {
+                success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
+
+                if (success)
+                {
+                    _pageService.SortPostNumAsc(msg.Id);
+
+                    EmbedBuilder builder = UpdatePage(pageData, embedTitle);
+
+                    await msg.ModifyAsync(msg => msg.Embed = builder.Build());
+                }
+            }
             else if (reaction.Emote.Name == Constants.ChangeOrder.Name)
             {
                 success = _pageService.PageIndex.TryGetValue(msg.Id, out pageData);
@@ -686,6 +727,17 @@ namespace LobitaBot
                         else
                         {
                             _pageService.SortAlphabeticalAsc(msg.Id);
+                        }
+                    }
+                    else if (pageData.NumericallySorted)
+                    {
+                        if (pageData.SortedAscending)
+                        {
+                            _pageService.SortPostNumDesc(msg.Id);
+                        }
+                        else
+                        {
+                            _pageService.SortPostNumAsc(msg.Id);
                         }
                     }
 

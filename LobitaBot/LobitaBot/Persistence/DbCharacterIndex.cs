@@ -92,7 +92,7 @@ namespace LobitaBot
                 }
             }
 
-            dataQuery = $"SELECT name, id FROM tags WHERE name IN ({sb})";
+            dataQuery = $"SELECT name, id, post_count FROM tags WHERE name IN ({sb})";
 
             return LookupTagData(tags, dataQuery);
         }

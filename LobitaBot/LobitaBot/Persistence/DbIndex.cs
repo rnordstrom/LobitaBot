@@ -154,7 +154,7 @@ namespace LobitaBot
 
                 while (rdr.Read())
                 {
-                    tagData.Add(new TagData((string)rdr[0], (int)rdr[1]));
+                    tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (int)rdr[2]));
                 }
             }
             catch (Exception e)
