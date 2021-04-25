@@ -11,7 +11,7 @@ namespace LobitaBot
 
         public PostData LookupRandomPost(string searchTerm)
         {
-            if (_cacheService.CharacterInCache(searchTerm) && _cacheService.CharacterAloneInCache(searchTerm))
+            if (_cacheService.CharacterAloneInCache(searchTerm))
             {
                 return _cacheService.CacheRandom();
             }
@@ -29,7 +29,7 @@ namespace LobitaBot
 
         public PostData LookupNextPost(string searchTerm, int index)
         {
-            if (_cacheService.CharacterInCache(searchTerm) && _cacheService.CharacterAloneInCache(searchTerm))
+            if (_cacheService.CharacterAloneInCache(searchTerm))
             {
                 return _cacheService.CacheNext(index);
             }
@@ -47,7 +47,7 @@ namespace LobitaBot
 
         public PostData LookupPreviousPost(string searchTerm, int index)
         {
-            if (_cacheService.CharacterInCache(searchTerm) && _cacheService.CharacterAloneInCache(searchTerm))
+            if (_cacheService.CharacterAloneInCache(searchTerm))
             {
                 return _cacheService.CachePrevious(index);
             }
@@ -63,12 +63,48 @@ namespace LobitaBot
             return _cacheService.CachePrevious(index);
         }
 
+        public PostData LookupCollab(string[] searchTerms)
+        {
+            for (int i = 0; i < searchTerms.Length; i++)
+            {
+                searchTerms[i] = TagParser.EscapeApostrophe(searchTerms[i]);
+            }
 
-        public string LookupSingleTag(int id)
+            string baseQuery = 
+                $"SELECT t0.tag_id, t0.tag_name, t0.url, t0.series_name, t0.id " +
+                $"FROM " +
+                $"(SELECT t.id AS tag_id, t.name AS tag_name, url, s.name AS series_name, l.id AS id " +
+                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE t.name = '{searchTerms[0]}' " +
+                $"AND l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id) t0";
+
+            for (int i = 1; i < searchTerms.Length; i++)
+            {
+                baseQuery += " INNER JOIN ";
+                baseQuery += 
+                    $"(SELECT l.id AS id " +
+                    $"FROM tags AS t, tag_links AS tl, links AS l " +
+                    $"WHERE t.name = '{searchTerms[i]}' AND t.id = tl.tag_id AND l.id = tl.link_id) t{i}";
+                baseQuery += $" ON(t0.id = t{i}.id)";
+            }
+
+            PopulateCacheAsync(baseQuery);
+
+            return _cacheService.CacheRandom();
+        }
+
+        public string LookupTagById(int id)
         {
             string tagQuery = $"SELECT name from tags WHERE id = '{id}'";
 
-            return LookupSingleTag(tagQuery);
+            return LookupTagById(tagQuery);
+        }
+
+        public new int LookupTagIdByName(string tagName)
+        {
+            string tagQuery = $"SELECT id from tags WHERE name = '{tagName}'";
+
+            return base.LookupTagIdByName(tagQuery);
         }
 
         public List<TagData> LookupTagData(List<string> tags)
@@ -162,7 +198,7 @@ namespace LobitaBot
 
             if (chosen > 0)
             {
-                tag = LookupSingleTag(chosen);
+                tag = LookupTagById(chosen);
             }
 
             return tag;

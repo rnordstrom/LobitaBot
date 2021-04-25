@@ -42,11 +42,11 @@ namespace LobitaBot
             throw new NotImplementedException();
         }
 
-        public string LookupSingleTag(int id)
+        public string LookupTagById(int id)
         {
             string tagQuery = $"SELECT name from series WHERE id = '{id}'";
 
-            return LookupSingleTag(tagQuery);
+            return LookupTagById(tagQuery);
         }
 
         public List<TagData> LookupTagData(List<string> tags)

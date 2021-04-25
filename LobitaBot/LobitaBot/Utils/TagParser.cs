@@ -36,7 +36,7 @@ namespace LobitaBot
                 }
             }
 
-            return sb.ToString();
+            return sb.ToString().Trim();
         }
 
         public static List<List<TagData>> CompileSuggestions(List<TagData> tagData, int maxNumFields)

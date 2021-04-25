@@ -32,19 +32,17 @@ namespace LobitaBot
             return tagCache.Count == 0 ? true : false;
         }
 
-        public bool CharacterInCache(string tagName)
+        public bool CharacterAloneInCache(string tagName)
         {
-            return tagCache.Any(pd => pd.TagName == tagName);
+            return tagCache.Any(pd => pd.TagName == tagName) && 
+                !tagCache.Any(pd => pd.TagName != tagName) && 
+                !tagCache.Any(pd => pd.AdditionalTagNames != null);
         }
 
         public bool SeriesInCache(string seriesName)
         {
-            return tagCache.Any(pd => pd.SeriesName == seriesName);
-        }
-
-        public bool CharacterAloneInCache(string tagName)
-        {
-            return !tagCache.Any(pd => pd.TagName != tagName);
+            return tagCache.Any(pd => pd.SeriesName == seriesName && 
+            !tagCache.Any(pd => pd.AdditionalTagNames != null));
         }
 
         public PostData CacheRandom()

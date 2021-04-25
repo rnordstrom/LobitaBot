@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace LobitaBot
@@ -40,11 +41,12 @@ namespace LobitaBot
         }
 
         [Command("character")]
-        [Summary("Search for random images related to a particular free-text character tag.")]
-        public async Task CharacterAsync(string searchTerm = null)
+        [Summary("Rolls a random image of a character.\n" +
+            "Lists all alternatives if a conclusive match is not found.")]
+        public async Task CharacterAsync(string charName = null)
         {
             EmbedBuilder embedBuilder = 
-                SearchAsync(searchTerm, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
+                SearchAsync(charName, CATEGORY.CHARACTER, new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
             ulong msgId;
             PageData pageData;
 
@@ -82,11 +84,12 @@ namespace LobitaBot
         }
 
         [Command("series")]
-        [Summary("Search for random images related to a particular free-text series tag.")]
-        public async Task SeriesAsync(string searchTerm = null)
+        [Summary("Rolls a random image from a series.\n" +
+            "Lists all alternatives if a conclusive match is not found.")]
+        public async Task SeriesAsync(string seriesName = null)
         {
             EmbedBuilder embedBuilder 
-                = SearchAsync(searchTerm, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
+                = SearchAsync(seriesName, CATEGORY.SERIES, new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService)).Result;
             ulong msgId;
             PageData pageData;
 
@@ -117,82 +120,8 @@ namespace LobitaBot
             }
         }
 
-        [Command("in_series")]
-        [Summary("Lists characters that belong to the specified series.")]
-        public async Task InSeriesAsync(string seriesName = null)
-        {
-            if (string.IsNullOrEmpty(seriesName))
-            {
-                await ReplyAsync("Usage: oka.in_series series_name");
-
-                return;
-            }
-
-            if (!_pageService.HandlerAdded)
-            {
-                Context.Client.ReactionAdded += ReactionAdded_Event;
-                _pageService.HandlerAdded = true;
-            }
-
-            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
-            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
-            int id;
-            string tag;
-            string seriesNameEscaped;
-
-            if (int.TryParse(seriesName, out id))
-            {
-                tag = seriesIndex.LookupSingleTag(id);
-
-                if (!string.IsNullOrEmpty(tag))
-                {
-                    seriesName = tag;
-                }
-            }
-
-            seriesName = TagParser.Format(seriesName);
-            seriesNameEscaped = TagParser.EscapeUnderscore(seriesName);
-
-            List<string> characters = seriesIndex.CharactersInSeries(seriesName);
-
-            if (characters.Count > 0)
-            {
-                if (characters.Count < MaxSearchResults)
-                {
-                    List<TagData> characterData = charIndex.LookupTagData(characters);
-
-                    pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
-
-                    EmbedBuilder embed = BuildSuggestionsEmbed(pages);
-
-                    if (embed != null)
-                    {
-                        var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-                        ulong msgId = toSend.Id;
-                        PageData pageData = new PageData(pages);
-
-                        _pageService.AddLimited(msgId, pageData);
-
-                        await toSend.AddReactionAsync(Constants.PageBack);
-                        await toSend.AddReactionAsync(Constants.PageForward);
-                        await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                        await toSend.AddReactionAsync(Constants.SortNumerical);
-                        await toSend.AddReactionAsync(Constants.ChangeOrder);
-                    }
-                }
-                else
-                {
-                    await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
-                }
-            }
-            else
-            {
-                await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
-            }
-        }
-
         [Command("with_character")]
-        [Summary("Lists series that feature the specified character.")]
+        [Summary("Lists series with the specified character.")]
         public async Task WithCharacterAsync(string charName = null)
         {
             if (string.IsNullOrEmpty(charName))
@@ -216,7 +145,7 @@ namespace LobitaBot
 
             if (int.TryParse(charName, out id))
             {
-                tag = charIndex.LookupSingleTag(id);
+                tag = charIndex.LookupTagById(id);
 
                 if (!string.IsNullOrEmpty(tag))
                 {
@@ -265,8 +194,82 @@ namespace LobitaBot
             }
         }
 
+        [Command("in_series")]
+        [Summary("Lists characters that belong to the specified series.")]
+        public async Task InSeriesAsync(string seriesName = null)
+        {
+            if (string.IsNullOrEmpty(seriesName))
+            {
+                await ReplyAsync("Usage: oka.in_series series_name");
+
+                return;
+            }
+
+            if (!_pageService.HandlerAdded)
+            {
+                Context.Client.ReactionAdded += ReactionAdded_Event;
+                _pageService.HandlerAdded = true;
+            }
+
+            DbSeriesIndex seriesIndex = new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+            int id;
+            string tag;
+            string seriesNameEscaped;
+
+            if (int.TryParse(seriesName, out id))
+            {
+                tag = seriesIndex.LookupTagById(id);
+
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    seriesName = tag;
+                }
+            }
+
+            seriesName = TagParser.Format(seriesName);
+            seriesNameEscaped = TagParser.EscapeUnderscore(seriesName);
+
+            List<string> characters = seriesIndex.CharactersInSeries(seriesName);
+
+            if (characters.Count > 0)
+            {
+                if (characters.Count < MaxSearchResults)
+                {
+                    List<TagData> characterData = charIndex.LookupTagData(characters);
+
+                    pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
+
+                    EmbedBuilder embed = BuildSuggestionsEmbed(pages);
+
+                    if (embed != null)
+                    {
+                        var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
+                        ulong msgId = toSend.Id;
+                        PageData pageData = new PageData(pages);
+
+                        _pageService.AddLimited(msgId, pageData);
+
+                        await toSend.AddReactionAsync(Constants.PageBack);
+                        await toSend.AddReactionAsync(Constants.PageForward);
+                        await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                        await toSend.AddReactionAsync(Constants.SortNumerical);
+                        await toSend.AddReactionAsync(Constants.ChangeOrder);
+                    }
+                }
+                else
+                {
+                    await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
+                }
+            }
+            else
+            {
+                await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
+            }
+        }
+
         [Command("random")]
-        [Summary("Search for random images belonging to a random tag.")]
+        [Summary("Rolls a random character image.")]
         public async Task RandomAsync()
         {
             EmbedBuilder embedBuilder = RandomPost().Result;
@@ -278,6 +281,77 @@ namespace LobitaBot
                 await toSend.AddReactionAsync(Constants.RerollRandom);
                 await toSend.AddReactionAsync(Constants.Characters);
             }
+        }
+
+        [Command("collab")]
+        [Summary("Rolls an image that features all specified characters.")]
+        public async Task CollabAsync(params string[] charNames)
+        {
+            EmbedBuilder embed = new EmbedBuilder();
+
+            if (charNames.Length < 2 || charNames.Length > 5)
+            {
+                await ReplyAsync("Please provide between 2 and 5 character names.");
+            }
+            else
+            {
+                DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+                int id;
+                string tag;
+                string matchedName;
+
+                for (int i = 0; i < charNames.Length; i++)
+                {
+                    if (int.TryParse(charNames[0], out id))
+                    {
+                        tag = charIndex.LookupTagById(id);
+
+                        if (!string.IsNullOrEmpty(tag))
+                        {
+                            charNames[i] = tag;
+                        }
+                    }
+
+                    charNames[i] = TagParser.EscapeUnderscore(charNames[i]);
+
+                    if (!charIndex.HasExactMatch(charNames[i], out matchedName))
+                    {
+                        await ReplyAsync($"Character name '{charNames[i]}' could not be found.");
+
+                        return;
+                    }
+                    else
+                    {
+                        charNames[i] = matchedName;
+                    }
+                }
+
+                List<string> additionalTagNames = new List<string>();
+                List<int> additionalTagIds = new List<int>();
+
+                for (int i = 1; i < charNames.Length; i++)
+                {
+                    additionalTagNames.Add(charNames[i]);
+                    additionalTagIds.Add(charIndex.LookupTagIdByName(charNames[i]));
+                }
+
+                PostData postData = charIndex.LookupCollab(charNames);
+                string embedDescription = "Enjoy your collab!";
+
+                if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                {
+                    postData.AdditionalTagNames = additionalTagNames;
+                    postData.AdditionalTagIds = additionalTagIds;
+
+                    embed = BuildImageEmbed(postData, embedDescription);
+                }
+                else
+                {
+                    await ReplyAsync($"No images found for this collab.");
+                }
+            }
+
+            await Context.Channel.SendMessageAsync(embed: embed.Build());
         }
 
         private async Task<EmbedBuilder> SearchAsync(string searchTerm, CATEGORY category, ITagIndex tagIndex, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
@@ -322,7 +396,7 @@ namespace LobitaBot
 
             if (int.TryParse(searchTerm, out id))
             {
-                tag = tagIndex.LookupSingleTag(id);
+                tag = tagIndex.LookupTagById(id);
 
                 if (!string.IsNullOrEmpty(tag))
                 {
@@ -444,10 +518,30 @@ namespace LobitaBot
         private EmbedBuilder BuildImageEmbed(PostData postData, string embedDescription)
         {
             string seriesNameEscaped = TagParser.EscapeUnderscore(postData.SeriesName);
-            string title = TagParser.BuildTitle(postData.TagName);
+            StringBuilder title = new StringBuilder(TagParser.BuildTitle(postData.TagName));
+            StringBuilder tagIds = new StringBuilder(postData.TagId.ToString());
+            StringBuilder tagIdTitle = new StringBuilder("Character ID");
 
-            return new EmbedBuilder().WithTitle(title)
-                            .AddField("Character ID", postData.TagId, true)
+            if (postData.AdditionalTagNames != null)
+            {
+                foreach (string s in postData.AdditionalTagNames)
+                {
+                    title.Append($", {TagParser.BuildTitle(s)}");
+                }
+            }
+
+            if (postData.AdditionalTagIds != null)
+            {
+                foreach (int i in postData.AdditionalTagIds)
+                {
+                    tagIds.Append($", {i}");
+                }
+
+                tagIdTitle.Append("s");
+            }
+
+            return new EmbedBuilder().WithTitle(title.ToString())
+                            .AddField(tagIdTitle.ToString(), tagIds.ToString(), true)
                             .AddField("Post ID", postData.LinkId, true)
                             .AddField("Series Name", seriesNameEscaped, true)
                             .WithDescription(embedDescription)

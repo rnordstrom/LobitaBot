@@ -38,41 +38,15 @@ namespace LobitaBot
                     if (result.IsSuccess)
                     {
                         EmbedFieldBuilder field = new EmbedFieldBuilder();
+                        string parameters = string.Empty;
 
-                        switch (cmd.Name)
+                        foreach (ParameterInfo pi in cmd.Parameters)
                         {
-                            case "character":
-                                field.WithName($"{Constants.Prefix}{cmd.Name} character_name");
-                                field.WithValue("Rolls a random image of **character_name**." +
-                                    Environment.NewLine +
-                                    "Lists all alternatives if a conclusive match is not found.");
-                                break;
-                            case "series":
-                                field.WithName($"{Constants.Prefix}{cmd.Name} series_name");
-                                field.WithValue("Rolls a random image from series **series_name**." +
-                                    Environment.NewLine +
-                                    "Lists all alternatives if a conclusive match is not found.");
-                                break;
-                            case "with_character":
-                                field.WithName($"{Constants.Prefix}{cmd.Name} character_name");
-                                field.WithValue("Lists series with character **character_name**.");
-                                break;
-                            case "in_series":
-                                field.WithName($"{Constants.Prefix}{cmd.Name} series_name");
-                                field.WithValue("Lists characters from series **series_name**.");
-                                break;
-                            case "random":
-                                field.WithName($"{Constants.Prefix}{cmd.Name}");
-                                field.WithValue("Rolls a random character image.");
-                                break;
-                            case "avatar":
-                                field.WithName($"{Constants.Prefix}{cmd.Name} [user_mention]");
-                                field.WithValue("Displays a user's avatar, or your own if a user @-mention is not provided.");
-                                break;
-                            case "help":
-                                continue;
+                            parameters += $"{pi.Name} ";
                         }
 
+                        field.WithName($"{Constants.Prefix}{cmd.Name} {parameters}");
+                        field.WithValue(cmd.Summary);
                         fields.Add(field);
                     }
                 }

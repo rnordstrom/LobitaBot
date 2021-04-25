@@ -109,7 +109,7 @@ namespace LobitaBot
             return Task.CompletedTask;
         }
 
-        protected string LookupSingleTag(string tagQuery)
+        protected string LookupTagById(string tagQuery)
         {
             string tag = "";
             MySqlCommand cmd;
@@ -136,6 +136,35 @@ namespace LobitaBot
             Conn.Close();
 
             return tag;
+        }
+
+        protected int LookupTagIdByName(string tagQuery)
+        {
+            int id = -1;
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            try
+            {
+                Conn.Open();
+
+                cmd = new MySqlCommand(tagQuery, Conn);
+                cmd.CommandTimeout = TimeOut;
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    id = (int)rdr[0];
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            Conn.Close();
+
+            return id;
         }
 
         protected List<TagData> LookupTagData(List<string> tags, string dataQuery)
