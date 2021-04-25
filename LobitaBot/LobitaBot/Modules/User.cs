@@ -8,7 +8,7 @@ namespace LobitaBot
     public class User : ModuleBase<SocketCommandContext>
     {
         [Command("avatar")]
-        [Summary("Displays the requesting user's avatar.")]
+        [Summary("Displays a user's avatar, or your own if a user @-mention is not provided.")]
         public async Task AvatarAsync(string userID = null)
         {
             var users = Context.Message.MentionedUsers;

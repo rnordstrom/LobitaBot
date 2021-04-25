@@ -1,5 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace LobitaBot
@@ -18,34 +20,40 @@ namespace LobitaBot
         public async Task HelpAsync()
         {
             EmbedBuilder builder = new EmbedBuilder()
-                .WithTitle("LobitaBot Commands");
-
-            string description;
+                .WithTitle("LobitaBot Commands")
+                .WithDescription("Character and series search commands use the %-symbol as a wildcard. " +
+                    Environment.NewLine +
+                    "Use the symbol anywhere in a search string to match any string of characters " +
+                    "before, after or amidst the search string. Multiple %-symbols may be used." +
+                    Environment.NewLine +
+                    "Examples: %aber, hol%, me%llis, od%_%ga");
+            List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
 
             foreach (var module in _commandService.Modules)
             {
-                description = string.Empty;
-
                 foreach (var cmd in module.Commands)
                 {
                     var result = await cmd.CheckPreconditionsAsync(Context);
 
                     if (result.IsSuccess)
                     {
-                        description += $"`{Constants.Prefix}{cmd.Name}`\n";
+                        EmbedFieldBuilder field = new EmbedFieldBuilder();
+                        string parameters = string.Empty;
+
+                        foreach (ParameterInfo pi in cmd.Parameters)
+                        {
+                            parameters += $"{pi.Name} ";
+                        }
+
+                        field.WithName($"{Constants.Prefix}{cmd.Name} {parameters}");
+                        field.WithValue(cmd.Summary);
+                        fields.Add(field);
                     }
                 }
 
-                if (!string.IsNullOrEmpty(description))
-                {
-                    builder.AddField(x =>
-                    {
-                        x.Name = module.Name;
-                        x.Value = description;
-                        x.IsInline = false;
-                    });
-                }
             }
+
+            builder.WithFields(fields);
 
             await ReplyAsync(embed: builder.Build());
         }

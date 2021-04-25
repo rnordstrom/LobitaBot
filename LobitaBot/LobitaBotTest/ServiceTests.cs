@@ -81,6 +81,32 @@ namespace LobitaBot.Tests
             Assert.AreEqual("h", service.PageIndex[FirstId].Pages[1][24].TagName);
         }
 
+        [TestMethod]
+        public void CacheServiceTests()
+        {
+            CacheService cacheService = new CacheService();
+
+            Assert.IsTrue(cacheService.IsEmpty());
+
+            PostData pd1 = new PostData(1, "gawr_gura", "1.jpg", "hololive", 0, 1);
+            PostData pd2 = new PostData(2, "usada_pekora", "2.jpg", "hololive", 0, 2);
+
+            cacheService.Add(pd1);
+
+            Assert.IsTrue(cacheService.CharacterAloneInCache(pd1.TagName));
+            Assert.IsTrue(cacheService.SeriesInCache(pd1.SeriesName));
+
+            cacheService.Add(pd2);
+
+            Assert.IsFalse(cacheService.CharacterAloneInCache(pd1.TagName));
+            Assert.IsFalse(cacheService.CharacterAloneInCache(pd2.TagName));
+            Assert.IsTrue(cacheService.SeriesInCache(pd1.SeriesName));
+
+            cacheService.Clear();
+
+            Assert.IsTrue(cacheService.IsEmpty());
+        }
+
         private void SetupSort()
         {
             List<List<TagData>> pages = new List<List<TagData>>();

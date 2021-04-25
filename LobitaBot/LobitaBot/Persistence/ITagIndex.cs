@@ -7,8 +7,8 @@ namespace LobitaBot
         PostData LookupRandomPost(string searchTerm);
         PostData LookupNextPost(string searchTerm, int index);
         PostData LookupPreviousPost(string searchTerm, int index);
-        bool TagExists(string searchTerm);
-        string LookupSingleTag(int id);
+        bool HasExactMatch(string searchTerm, out string matched);
+        string LookupTagById(int id);
         List<string> LookupTags(string searchTerm);
         List<TagData> LookupTagData(List<string> tags);
     }

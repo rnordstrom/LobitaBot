@@ -42,11 +42,11 @@ namespace LobitaBot
             throw new NotImplementedException();
         }
 
-        public string LookupSingleTag(int id)
+        public string LookupTagById(int id)
         {
             string tagQuery = $"SELECT name from series WHERE id = '{id}'";
 
-            return LookupSingleTag(tagQuery);
+            return LookupTagById(tagQuery);
         }
 
         public List<TagData> LookupTagData(List<string> tags)
@@ -70,11 +70,8 @@ namespace LobitaBot
                 }
             }
 
-            dataQuery =
-                $"SELECT s.name, s.id, COUNT(l.id) " +
-                $"FROM tags AS t, series_tags AS st, series AS s, links AS l, tag_links AS tl " +
-                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND t.id = st.tag_id AND st.series_id = s.id AND s.name IN ({sb}) " +
-                $"GROUP BY s.name";
+            dataQuery = 
+                $"SELECT name, id, post_count FROM series WHERE name IN ({sb})";
 
             return LookupTagData(tags, dataQuery);
         }
@@ -83,18 +80,18 @@ namespace LobitaBot
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
-            string tagQuery = $"SELECT name from series WHERE name LIKE '%{searchTerm}%'";
+            string tagQuery = $"SELECT name from series WHERE name LIKE '{searchTerm}'";
 
             return base.LookupTags(tagQuery);
         }
 
-        public new bool TagExists(string searchTerm)
+        public new bool HasExactMatch(string searchTerm, out string matched)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
-            string tagQuery = $"SELECT name from series WHERE name = '{searchTerm}'";
+            string tagQuery = $"SELECT name from series WHERE name LIKE '{searchTerm}'";
 
-            return base.TagExists(tagQuery);
+            return base.HasExactMatch(tagQuery, out matched);
         }
 
         public List<string> CharactersInSeries(string seriesName)
@@ -107,7 +104,7 @@ namespace LobitaBot
             string characterQuery = 
                 $"SELECT t.name " +
                 $"FROM tags AS t, series_tags AS st, series AS s " +
-                $"WHERE t.id = st.tag_id AND st.series_id = s.id AND s.name = '{seriesName}'";
+                $"WHERE t.id = st.tag_id AND st.series_id = s.id AND s.name LIKE '{seriesName}'";
 
             List<string> characters = new List<string>();
 

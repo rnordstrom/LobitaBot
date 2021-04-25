@@ -14,15 +14,6 @@ namespace LobitaBot.Tests
         private string withApostrophe = "ninomae_ina'nis";
         private string nonExistant = "couldneverexist";
         private string seriesName = "hololive";
-        private string searchTerm1;
-        private string searchTerm2;
-
-        [TestInitialize]
-        public void Setup()
-        {
-            searchTerm1 = exampleTag.Split("_")[0];
-            searchTerm2 = exampleTag.Split("_")[1];
-        }
 
         [TestMethod]
         public void LookupRandomTest()
@@ -89,18 +80,18 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void TagExistsTest()
         {
-            Assert.IsTrue(charIndex.TagExists(exampleTag));
-            Assert.IsTrue(charIndex.TagExists(withApostrophe));
-            Assert.IsFalse(charIndex.TagExists(nonExistant));
+            Assert.IsTrue(charIndex.HasExactMatch(exampleTag, out string _));
+            Assert.IsTrue(charIndex.HasExactMatch(withApostrophe, out string _));
+            Assert.IsFalse(charIndex.HasExactMatch(nonExistant, out string _));
 
-            Assert.IsTrue(seriesIndex.TagExists(seriesName));
+            Assert.IsTrue(seriesIndex.HasExactMatch(seriesName, out string _));
         }
 
         [TestMethod]
         public void LookupTagsTest()
         {
-            Assert.IsTrue(charIndex.LookupTags(searchTerm1).Count != 0);
-            Assert.IsTrue(charIndex.LookupTags(searchTerm2).Count != 0);
+            Assert.IsTrue(charIndex.LookupTags(exampleTag).Count != 0);
+            Assert.IsTrue(charIndex.LookupTags(withApostrophe).Count != 0);
             Assert.IsTrue(charIndex.LookupTags(nonExistant).Count == 0);
 
             Assert.IsTrue(seriesIndex.LookupTags(seriesName).Count != 0);
@@ -109,7 +100,7 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupRandomTagTest()
         {
-            Assert.IsTrue(charIndex.TagExists(charIndex.LookupRandomTag()));
+            Assert.IsTrue(charIndex.HasExactMatch(charIndex.LookupRandomTag(), out string _));
         }
 
         [TestMethod]
@@ -118,7 +109,7 @@ namespace LobitaBot.Tests
             List<string> tags = new List<string> { exampleTag, withApostrophe };
             List<TagData> tagData = charIndex.LookupTagData(tags);
 
-            Assert.IsTrue(tagData.Count == tags.Count);
+            Assert.AreEqual(tags.Count, tagData.Count);
 
             foreach (TagData td in tagData)
             {
@@ -132,7 +123,7 @@ namespace LobitaBot.Tests
             List<string> series = new List<string> { seriesName };
             List<TagData> seriesData = seriesIndex.LookupTagData(series);
 
-            Assert.IsTrue(seriesData.Count == series.Count);
+            Assert.AreEqual(series.Count, seriesData.Count);
 
             foreach (TagData td in seriesData)
             {
