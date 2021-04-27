@@ -7,6 +7,11 @@ namespace LobitaBot
 {
     public class DbCharacterIndex : DbIndex, ITagIndex
     {
+        private string postQuery =
+                $"SELECT t.id, t.name, l.url, s.name, l.id " +
+                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
+                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = ";
+
         public DbCharacterIndex(string dbName, CacheService cacheService) : base(dbName, cacheService) { }
 
         public PostData LookupRandomPost(string searchTerm)
@@ -17,12 +22,8 @@ namespace LobitaBot
             }
 
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name, l.id " +
-                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
-            PopulateCacheAsync(postQuery);
+            PopulateCacheAsync(postQuery += $"'{searchTerm}'");
 
             return _cacheService.CacheRandom();
         }
@@ -35,12 +36,8 @@ namespace LobitaBot
             }
 
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name, l.id " +
-                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
-            PopulateCacheAsync(postQuery);
+            PopulateCacheAsync(postQuery += $"'{searchTerm}'");
 
             return _cacheService.CacheNext(index);
         }
@@ -53,12 +50,8 @@ namespace LobitaBot
             }
 
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name, l.id " +
-                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '{searchTerm}'";
 
-            PopulateCacheAsync(postQuery);
+            PopulateCacheAsync(postQuery += $"'{searchTerm}'");
 
             return _cacheService.CachePrevious(index);
         }
