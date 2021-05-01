@@ -104,6 +104,16 @@ namespace LobitaBot.Tests
 
             cacheService.Clear();
 
+            List<string> additionalTagNames = new List<string>();
+            additionalTagNames.Add(pd2.TagName);
+
+            pd1.AdditionalData = new AdditionalPostData(new List<int>(), additionalTagNames, new List<string>());
+            cacheService.Add(pd1);
+
+            Assert.IsTrue(cacheService.CollabInCache(new string[] { pd1.TagName, pd2.TagName }));
+
+            cacheService.Clear();
+
             Assert.IsTrue(cacheService.IsEmpty());
         }
 

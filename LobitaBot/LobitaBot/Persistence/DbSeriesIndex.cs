@@ -27,7 +27,7 @@ namespace LobitaBot
                 $"FROM links AS l, tags AS t, tag_links AS tl, series_tags AS st, series AS s " +
                 $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND s.name = '{searchTerm}'";
 
-            PopulateCacheAsync(postQuery);
+            PopulateCacheParallel(postQuery);
 
             return _cacheService.CacheRandom();
         }

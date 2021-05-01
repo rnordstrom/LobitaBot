@@ -16,7 +16,7 @@ namespace LobitaBot.Tests
         private string seriesName = "hololive";
 
         [TestMethod]
-        public void LookupRandomTest()
+        public void LookupRandomPostTest()
         {
             PostData pd = charIndex.LookupRandomPost(exampleTag);
 
@@ -25,6 +25,7 @@ namespace LobitaBot.Tests
             Assert.IsFalse(string.IsNullOrEmpty(pd.TagName));
             Assert.IsFalse(string.IsNullOrEmpty(pd.Link));
             Assert.IsFalse(string.IsNullOrEmpty(pd.SeriesName));
+            Assert.IsNull(pd.AdditionalData);
 
             pd = charIndex.LookupRandomPost(withApostrophe);
 
@@ -33,6 +34,7 @@ namespace LobitaBot.Tests
             Assert.IsFalse(string.IsNullOrEmpty(pd.TagName));
             Assert.IsFalse(string.IsNullOrEmpty(pd.Link));
             Assert.IsFalse(string.IsNullOrEmpty(pd.SeriesName));
+            Assert.IsNull(pd.AdditionalData);
 
             Assert.IsNull(charIndex.LookupRandomPost(nonExistant));
 
@@ -43,10 +45,11 @@ namespace LobitaBot.Tests
             Assert.IsFalse(string.IsNullOrEmpty(pd.TagName));
             Assert.IsFalse(string.IsNullOrEmpty(pd.Link));
             Assert.IsFalse(string.IsNullOrEmpty(pd.SeriesName));
+            Assert.IsNull(pd.AdditionalData);
         }
 
         [TestMethod]
-        public void LookupNextTest()
+        public void LookupNextPostTest()
         {
             int index = 1;
             PostData pd = charIndex.LookupNextPost(exampleTag, index);
@@ -62,7 +65,7 @@ namespace LobitaBot.Tests
         }
 
         [TestMethod]
-        public void LookupPreviousTest()
+        public void LookupPreviousPostTest()
         {
             int index = 1;
             PostData pd = charIndex.LookupPreviousPost(exampleTag, index);
@@ -85,6 +88,47 @@ namespace LobitaBot.Tests
             Assert.IsFalse(charIndex.HasExactMatch(nonExistant, out string _));
 
             Assert.IsTrue(seriesIndex.HasExactMatch(seriesName, out string _));
+        }
+
+        [TestMethod]
+        public void LookupRandomCollabTest()
+        {
+            PostData pd = charIndex.LookupRandomCollab(new string[] { exampleTag, withApostrophe });
+
+            Assert.IsNotNull(pd);
+            Assert.IsNotNull(pd.LinkId);
+            Assert.IsNotNull(pd.PostIndex);
+            Assert.IsNotNull(pd.AdditionalData);
+            Assert.AreEqual(exampleTag, pd.TagName);
+            Assert.AreEqual(seriesName, pd.SeriesName);
+            Assert.AreEqual("3.jpg", pd.Link);
+        }
+
+        [TestMethod]
+        public void LookupNextCollabTest()
+        {
+            int index = 0;
+            PostData pd = charIndex.LookupNextCollab(new string[] { exampleTag, withApostrophe }, index);
+
+            Assert.IsNotNull(pd);
+            Assert.AreEqual(0, pd.PostIndex);
+        }
+
+        [TestMethod]
+        public void LookupPreviousCollabTest()
+        {
+            int index = 0;
+            PostData pd = charIndex.LookupPreviousCollab(new string[] { exampleTag, withApostrophe }, index);
+
+            Assert.IsNotNull(pd);
+            Assert.AreEqual(0, pd.PostIndex);
+        }
+
+        [TestMethod]
+        public void LookupTagNameIdTest()
+        {
+            Assert.AreEqual(1, charIndex.LookupTagIdByName(exampleTag));
+            Assert.AreEqual(exampleTag, charIndex.LookupTagById(1));
         }
 
         [TestMethod]
@@ -139,7 +183,7 @@ namespace LobitaBot.Tests
         public void TestSeriesCharacters()
         {
             List<string> characters;
-            List<string> series;
+            string series;
 
             characters = seriesIndex.CharactersInSeries(seriesName);
             series = charIndex.SeriesWithCharacter(exampleTag);
@@ -148,8 +192,7 @@ namespace LobitaBot.Tests
             Assert.IsTrue(characters.Contains(exampleTag));
             Assert.IsTrue(characters.Contains(withApostrophe));
 
-            Assert.AreEqual(1, series.Count);
-            Assert.IsTrue(series.Contains(seriesName));
+            Assert.AreEqual(series, seriesName);
         }
 
         [TestMethod]

@@ -9,17 +9,6 @@ namespace LobitaBot.Tests
         private ITagIndex index = 
             new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
         private string exampleTag = "gawr_gura";
-        private string exampleTag2 = "hilda_valentine_goneril";
-        string partial = "hilda_valentine";
-        string part1;
-        string part2;
-
-        [TestInitialize]
-        public void Setup()
-        {
-            part1 = exampleTag.Split("_")[0];
-            part2 = exampleTag.Split("_")[1];
-        }
 
         [TestMethod()]
         public void BuildTitleTest()
