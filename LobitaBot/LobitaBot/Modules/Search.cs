@@ -330,76 +330,86 @@ namespace LobitaBot
 
                 return null;
             }
-            else
+
+            List<string> searchTermsList = new List<string>(searchTerms);
+
+            foreach (string s in searchTermsList)
             {
-                DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
-                int id;
-                string tag;
-                string matchedName;
-
-                for (int i = 0; i < searchTerms.Length; i++)
+                if (searchTermsList.FindAll(t => t == s).Count > 1)
                 {
-                    if (int.TryParse(searchTerms[i], out id))
-                    {
-                        tag = charIndex.LookupTagById(id);
-
-                        if (!string.IsNullOrEmpty(tag))
-                        {
-                            searchTerms[i] = tag;
-                        }
-                    }
-
-                    searchTerms[i] = TagParser.Format(searchTerms[i]);
-
-                    if (!charIndex.HasExactMatch(searchTerms[i], out matchedName))
-                    {
-                        await ReplyAsync($"Character name '{TagParser.EscapeUnderscore(searchTerms[i])}' could not be found.");
-
-                        return null;
-                    }
-                    else
-                    {
-                        searchTerms[i] = matchedName;
-                    }
-                }
-
-                PostData postData = null;
-
-                switch (rollSequence)
-                {
-                    case ROLL_SEQUENCE.RANDOM:
-                        postData = charIndex.LookupRandomCollab(searchTerms);
-                        break;
-                    case ROLL_SEQUENCE.PREVIOUS:
-                        postData = charIndex.LookupPreviousCollab(searchTerms, postIndex);
-                        break;
-                    case ROLL_SEQUENCE.NEXT:
-                        postData = charIndex.LookupNextCollab(searchTerms, postIndex);
-                        break;
-                }
-
-                string embedDescription = rerollCollabDescription + "." + 
-                    Environment.NewLine + 
-                    listCharactersDescription + ".";
-
-                if (_cacheService.CacheSize() < MaxSequentialImages)
-                {
-                    embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-                }
-
-                if (postData != null && !string.IsNullOrEmpty(postData.Link))
-                {
-                    embed = BuildImageEmbed(postData, embedDescription);
-                }
-                else
-                {
-                    await ReplyAsync($"No images found for this collab.");
+                    await ReplyAsync("Names may not be specified more than once.");
 
                     return null;
                 }
-
-                return embed;
             }
+            
+            DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+            int id;
+            string tag;
+            string matchedName;
+
+            for (int i = 0; i < searchTerms.Length; i++)
+            {
+                if (int.TryParse(searchTerms[i], out id))
+                {
+                    tag = charIndex.LookupTagById(id);
+
+                    if (!string.IsNullOrEmpty(tag))
+                    {
+                        searchTerms[i] = tag;
+                    }
+                }
+
+                searchTerms[i] = TagParser.Format(searchTerms[i]);
+
+                if (!charIndex.HasExactMatch(searchTerms[i], out matchedName))
+                {
+                    await ReplyAsync($"Character name '{TagParser.EscapeUnderscore(searchTerms[i])}' could not be found.");
+
+                    return null;
+                }
+                else
+                {
+                    searchTerms[i] = matchedName;
+                }
+            }
+
+            PostData postData = null;
+
+            switch (rollSequence)
+            {
+                case ROLL_SEQUENCE.RANDOM:
+                    postData = charIndex.LookupRandomCollab(searchTerms);
+                    break;
+                case ROLL_SEQUENCE.PREVIOUS:
+                    postData = charIndex.LookupPreviousCollab(searchTerms, postIndex);
+                    break;
+                case ROLL_SEQUENCE.NEXT:
+                    postData = charIndex.LookupNextCollab(searchTerms, postIndex);
+                    break;
+            }
+
+            string embedDescription = rerollCollabDescription + "." + 
+                Environment.NewLine + 
+                listCharactersDescription + ".";
+
+            if (_cacheService.CacheSize() < MaxSequentialImages)
+            {
+                embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
+            }
+
+            if (postData != null && !string.IsNullOrEmpty(postData.Link))
+            {
+                embed = BuildImageEmbed(postData, embedDescription);
+            }
+            else
+            {
+                await ReplyAsync($"No images found for this collab.");
+
+                return null;
+            }
+
+            return embed;
         }
 
         private async Task<EmbedBuilder> SearchAsync(string searchTerm, CATEGORY category, ITagIndex tagIndex, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
