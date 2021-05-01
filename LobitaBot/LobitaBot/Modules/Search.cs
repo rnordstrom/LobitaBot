@@ -302,7 +302,7 @@ namespace LobitaBot
 
                 for (int i = 0; i < charNames.Length; i++)
                 {
-                    if (int.TryParse(charNames[0], out id))
+                    if (int.TryParse(charNames[i], out id))
                     {
                         tag = charIndex.LookupTagById(id);
 
