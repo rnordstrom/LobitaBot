@@ -73,7 +73,7 @@ namespace LobitaBot
             dataQuery = 
                 $"SELECT name, id, post_count FROM series WHERE name IN ({sb})";
 
-            return LookupTagData(tags, dataQuery);
+            return LookupTagData(dataQuery);
         }
 
         public new List<string> LookupTags(string searchTerm)
