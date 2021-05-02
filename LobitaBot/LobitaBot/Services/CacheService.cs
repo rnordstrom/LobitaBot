@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,15 +35,46 @@ namespace LobitaBot
 
         public bool CharacterAloneInCache(string tagName)
         {
-            return tagCache.Any(pd => pd.TagName == tagName) && 
-                !tagCache.Any(pd => pd.TagName != tagName) && 
-                !tagCache.Any(pd => pd.AdditionalTagNames != null);
+            List<PostData> snapshot = tagCache.ToList();
+
+            return snapshot.Count != 0 &&
+                snapshot.All(pd => pd.TagName == tagName) &&
+                snapshot.All(pd => pd.AdditionalData == null);
         }
 
         public bool SeriesInCache(string seriesName)
         {
-            return tagCache.Any(pd => pd.SeriesName == seriesName && 
-            !tagCache.Any(pd => pd.AdditionalTagNames != null));
+            List<PostData> snapshot = tagCache.ToList();
+
+            return snapshot.Count != 0 &&
+                snapshot.All(pd => pd.SeriesName == seriesName) &&
+                snapshot.All(pd => pd.AdditionalData == null);
+        }
+
+        public bool CollabInCache(string[] tagNames)
+        {
+            List<PostData> snapshot = tagCache.ToList();
+
+            return snapshot.Count != 0 &&
+                snapshot.All(pd => pd.TagName == tagNames[0]) &&
+                snapshot.All(pd =>
+                {
+                    bool b = true;
+
+                    for (int i = 1; i < tagNames.Length; i++)
+                    {
+                        if (pd.AdditionalData != null && pd.AdditionalData.AdditionalTagNames.Contains(tagNames[i]))
+                        {
+                            b &= true;
+                        }
+                        else
+                        {
+                            b &= false;
+                        }
+                    }
+
+                    return b;
+                });
         }
 
         public PostData CacheRandom()

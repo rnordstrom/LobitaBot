@@ -10,8 +10,8 @@ namespace LobitaBot
     {
         protected MySqlConnection Conn { get; }
         protected CacheService _cacheService;
-        private const int TimeOut = 300;
-        private const int Limit = 10000;
+        protected const int TimeOut = 300;
+        protected const int Limit = 10000;
 
         protected DbIndex(string dbName, CacheService cacheService)
         {
@@ -25,7 +25,7 @@ namespace LobitaBot
             _cacheService = cacheService;
         }
 
-        protected void PopulateCacheAsync(string postQuery)
+        protected void PopulateCacheParallel(string postQuery, AdditionalPostData additionalData = null)
         {
             _cacheService.CTS.Cancel();
 
@@ -44,6 +44,7 @@ namespace LobitaBot
 
             MySqlCommand cmd;
             MySqlDataReader rdr;
+            PostData pd;
             int i = 0;
             string postQueryLimit = postQuery + $" LIMIT {Limit}";
 
@@ -57,12 +58,19 @@ namespace LobitaBot
 
                 while (rdr.Read())
                 {
-                    _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++, (int)rdr[4]));
+                    pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++, (int)rdr[4]);
+
+                    if (additionalData != null)
+                    {
+                        pd.AdditionalData = additionalData;
+                    }
+
+                    _cacheService.Add(pd);
                 }
 
                 rdr.Close();
 
-                _cacheService.CacheTask = Task.Factory.StartNew(() => PopulateCacheAsync(postQueryLimit, i, _cacheService.CTS.Token), TaskCreationOptions.LongRunning);
+                _cacheService.CacheTask = Task.Factory.StartNew(() => PopulateCacheParallel(postQueryLimit, i, _cacheService.CTS.Token, additionalData), TaskCreationOptions.LongRunning);
             }
             catch (Exception e)
             {
@@ -72,13 +80,14 @@ namespace LobitaBot
             }
         }
 
-        private Task PopulateCacheAsync(string queryString, int index, CancellationToken token)
+        private Task PopulateCacheParallel(string queryString, int index, CancellationToken token, AdditionalPostData additionalData)
         {
             long offset = 0;
             string postQueryOffset;
             bool endReached = false;
             MySqlCommand cmd;
             MySqlDataReader rdr;
+            PostData pd;
 
             while (!endReached && !token.IsCancellationRequested)
             {
@@ -93,7 +102,14 @@ namespace LobitaBot
                 {
                     while (rdr.Read())
                     {
-                        _cacheService.Add(new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], index++, (int)rdr[4]));
+                        pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], index++, (int)rdr[4]);
+
+                        if (additionalData != null)
+                        {
+                            pd.AdditionalData = additionalData;
+                        }
+
+                        _cacheService.Add(pd);
                     }
                 }
                 else
