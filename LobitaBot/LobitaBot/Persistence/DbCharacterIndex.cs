@@ -137,7 +137,7 @@ namespace LobitaBot
 
             dataQuery = $"SELECT name, id, post_count FROM tags WHERE name IN ({sb})";
 
-            return LookupTagData(tags, dataQuery);
+            return LookupTagData(dataQuery);
         }
 
         public new List<string> LookupTags(string searchTerm)
@@ -374,9 +374,9 @@ namespace LobitaBot
             for (int i = 1; i < searchTerms.Length; i++)
             {
                 additionalTagNames.Add(searchTerms[i]);
-                additionalTagIds.Add(LookupTagIdByName(searchTermsEscaped[i]));
+                additionalTagIds.Add(LookupTagIdByName(searchTerms[i]));
 
-                seriesName = SeriesWithCharacter(searchTermsEscaped[i]);
+                seriesName = SeriesWithCharacter(searchTerms[i]);
 
                 if (!additionalSeriesNames.Contains(seriesName))
                 {

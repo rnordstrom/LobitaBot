@@ -183,7 +183,7 @@ namespace LobitaBot
             return id;
         }
 
-        protected List<TagData> LookupTagData(List<string> tags, string dataQuery)
+        protected List<TagData> LookupTagData(string dataQuery)
         {
             List<TagData> tagData = new List<TagData>();
             MySqlCommand cmd;
