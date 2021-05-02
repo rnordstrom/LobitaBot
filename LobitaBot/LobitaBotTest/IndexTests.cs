@@ -208,5 +208,14 @@ namespace LobitaBot.Tests
             Assert.IsTrue(post2.Contains(exampleTag));
             Assert.IsTrue(post2.Contains(withApostrophe));
         }
+
+        [TestMethod]
+        public void CollabsWithCharactersTest()
+        {
+            List<string> collabList = charIndex.CollabsWithCharacters(new string[] { exampleTag });
+
+            Assert.IsTrue(collabList.Count == 1);
+            Assert.IsTrue(collabList.Contains(withApostrophe));
+        }
     }
 }

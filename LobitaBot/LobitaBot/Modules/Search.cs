@@ -298,18 +298,37 @@ namespace LobitaBot
         public async Task CollabAsync(params string[] charNames)
         {
             EmbedBuilder embedBuilder = SearchCollabAsync(charNames).Result;
+            ulong msgId;
+            PageData pageData;
 
             if (embedBuilder != null)
             {
+                Embed embed = embedBuilder.Build();
                 var toSend = await Context.Channel.SendMessageAsync(embed: embedBuilder.Build());
 
-                await toSend.AddReactionAsync(Constants.RerollCollab);
-                await toSend.AddReactionAsync(Constants.Characters);
-
-                if (_cacheService.CacheSize() < MaxSequentialImages)
+                if (embed.Image != null)
                 {
-                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                    await toSend.AddReactionAsync(Constants.NextImage);
+                    await toSend.AddReactionAsync(Constants.RerollCollab);
+                    await toSend.AddReactionAsync(Constants.Characters);
+
+                    if (_cacheService.CacheSize() < MaxSequentialImages)
+                    {
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
+                    }
+                }
+                else
+                {
+                    msgId = toSend.Id;
+                    pageData = new PageData(pages);
+
+                    _pageService.AddLimited(msgId, pageData);
+
+                    await toSend.AddReactionAsync(Constants.PageBack);
+                    await toSend.AddReactionAsync(Constants.PageForward);
+                    await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
+                    await toSend.AddReactionAsync(Constants.ChangeOrder);
                 }
             }
         }
@@ -322,13 +341,19 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            EmbedBuilder embed;
-
             if (searchTerms.Length < 2 || searchTerms.Length > 5)
             {
                 await ReplyAsync("Please provide between 2 and 5 character names.");
 
                 return null;
+            }
+
+            bool wildcardLastArg = false;
+
+            if (searchTerms[searchTerms.Length - 1] == "*")
+            {
+                wildcardLastArg = true;
+                Array.Resize(ref searchTerms, searchTerms.Length - 1);
             }
 
             List<string> searchTermsList = new List<string>(searchTerms);
@@ -342,8 +367,9 @@ namespace LobitaBot
                     return null;
                 }
             }
-            
+
             DbCharacterIndex charIndex = new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), _cacheService);
+
             int id;
             string tag;
             string matchedName;
@@ -374,39 +400,60 @@ namespace LobitaBot
                 }
             }
 
-            PostData postData = null;
+            EmbedBuilder embed;
 
-            switch (rollSequence)
+            if (wildcardLastArg)
             {
-                case ROLL_SEQUENCE.RANDOM:
-                    postData = charIndex.LookupRandomCollab(searchTerms);
-                    break;
-                case ROLL_SEQUENCE.PREVIOUS:
-                    postData = charIndex.LookupPreviousCollab(searchTerms, postIndex);
-                    break;
-                case ROLL_SEQUENCE.NEXT:
-                    postData = charIndex.LookupNextCollab(searchTerms, postIndex);
-                    break;
-            }
+                List<string> furtherCollabs = charIndex.CollabsWithCharacters(searchTerms);
 
-            string embedDescription = rerollCollabDescription + "." + 
-                Environment.NewLine + 
-                listCharactersDescription + ".";
+                if (furtherCollabs.Count == 0)
+                {
+                    await ReplyAsync($"No further collabs with the specified character(s) exist.");
 
-            if (_cacheService.CacheSize() < MaxSequentialImages)
-            {
-                embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-            }
+                    return null;
+                }
 
-            if (postData != null && !string.IsNullOrEmpty(postData.Link))
-            {
-                embed = BuildImageEmbed(postData, embedDescription);
+                List<TagData> tagData = charIndex.LookupTagData(furtherCollabs);
+
+                pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+                embed = BuildSuggestionsEmbed(pages);
             }
             else
             {
-                await ReplyAsync($"No images found for this collab.");
+                PostData postData = null;
 
-                return null;
+                switch (rollSequence)
+                {
+                    case ROLL_SEQUENCE.RANDOM:
+                        postData = charIndex.LookupRandomCollab(searchTerms);
+                        break;
+                    case ROLL_SEQUENCE.PREVIOUS:
+                        postData = charIndex.LookupPreviousCollab(searchTerms, postIndex);
+                        break;
+                    case ROLL_SEQUENCE.NEXT:
+                        postData = charIndex.LookupNextCollab(searchTerms, postIndex);
+                        break;
+                }
+
+                string embedDescription = rerollCollabDescription + "." +
+                    Environment.NewLine +
+                    listCharactersDescription + ".";
+
+                if (_cacheService.CacheSize() < MaxSequentialImages)
+                {
+                    embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
+                }
+
+                if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                {
+                    embed = BuildImageEmbed(postData, embedDescription);
+                }
+                else
+                {
+                    await ReplyAsync($"No images found for this collab.");
+
+                    return null;
+                }
             }
 
             return embed;
@@ -596,7 +643,7 @@ namespace LobitaBot
 
                 foreach (string s in postData.AdditionalData.AdditionalSeriesNames)
                 {
-                    if (s != postData.SeriesName && !postData.AdditionalData.AdditionalSeriesNames.Contains(s))
+                    if (s != postData.SeriesName)
                     {
                         seriesNames.Append($", {s}");
                     }

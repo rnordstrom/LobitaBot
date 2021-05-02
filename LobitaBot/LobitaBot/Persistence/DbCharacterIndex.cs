@@ -277,10 +277,54 @@ namespace LobitaBot
             return characters;
         }
 
+        public List<string> CollabsWithCharacters(string[] searchTerms)
+        {
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+
+            string collabQuery = BuildCollabQuery(searchTerms);
+            string suggestionsQuery =
+                $"SELECT DISTINCT t.name " +
+                $"FROM tags AS t, tag_links AS tl, links AS l " +
+                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND l.id IN (SELECT link_id FROM ({collabQuery}) AS base)";
+
+            List<string> characters = new List<string>();
+
+            try
+            {
+                Conn.Open();
+
+                cmd = new MySqlCommand(suggestionsQuery, Conn);
+                cmd.CommandTimeout = TimeOut;
+                rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    characters.Add((string)rdr[0]);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            Conn.Close();
+
+            foreach (string s in searchTerms)
+            {
+                if (characters.Contains(s))
+                {
+                    characters.Remove(s);
+                }
+            }
+
+            return characters;
+        }
+
         private string BuildCollabQuery(string[] searchTerms)
         {
             string baseQuery =
-                $"SELECT t0.tag_id, t0.tag_name, t0.url, t0.series_name, t0.id " +
+                $"SELECT t0.tag_id, t0.tag_name, t0.url, t0.series_name, t0.id AS link_id " +
                 $"FROM " +
                 $"(SELECT t.id AS tag_id, t.name AS tag_name, url, s.name AS series_name, l.id AS id " +
                 $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
@@ -314,12 +358,19 @@ namespace LobitaBot
             List<string> additionalTagNames = new List<string>();
             List<int> additionalTagIds = new List<int>();
             List<string> additionalSeriesNames = new List<string>();
+            string seriesName;
 
             for (int i = 1; i < searchTerms.Length; i++)
             {
                 additionalTagNames.Add(searchTerms[i]);
                 additionalTagIds.Add(LookupTagIdByName(searchTermsEscaped[i]));
-                additionalSeriesNames.Add(SeriesWithCharacter(searchTermsEscaped[i]));
+
+                seriesName = SeriesWithCharacter(searchTermsEscaped[i]);
+
+                if (!additionalSeriesNames.Contains(seriesName))
+                {
+                    additionalSeriesNames.Add(seriesName);
+                }
             }
 
             PopulateCacheParallel(baseQuery, new AdditionalPostData(additionalTagIds, additionalTagNames, additionalSeriesNames));
