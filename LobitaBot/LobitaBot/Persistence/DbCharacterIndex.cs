@@ -107,6 +107,8 @@ namespace LobitaBot
 
         public new int LookupTagIdByName(string tagName)
         {
+            tagName = TagParser.EscapeApostrophe(tagName);
+
             string tagQuery = $"SELECT id from tags WHERE name = '{tagName}'";
 
             return base.LookupTagIdByName(tagQuery);
@@ -214,6 +216,8 @@ namespace LobitaBot
             MySqlCommand cmd;
             MySqlDataReader rdr;
 
+            charName = TagParser.EscapeApostrophe(charName);
+
             string seriesQuery =
                 $"SELECT s.name " +
                 $"FROM tags AS t, series_tags AS st, series AS s " +
@@ -282,7 +286,14 @@ namespace LobitaBot
             MySqlCommand cmd;
             MySqlDataReader rdr;
 
-            string collabQuery = BuildCollabQuery(searchTerms);
+            string[] searchTermsEscaped = new string[searchTerms.Length];
+
+            for (int i = 0; i < searchTerms.Length; i++)
+            {
+                searchTermsEscaped[i] = TagParser.EscapeApostrophe(searchTerms[i]);
+            }
+
+            string collabQuery = BuildCollabQuery(searchTermsEscaped);
             string suggestionsQuery =
                 $"SELECT DISTINCT t.name " +
                 $"FROM tags AS t, tag_links AS tl, links AS l " +
