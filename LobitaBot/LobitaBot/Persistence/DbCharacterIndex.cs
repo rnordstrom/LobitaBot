@@ -160,41 +160,23 @@ namespace LobitaBot
 
         public string LookupRandomTag()
         {
-            string minQuery = $"SELECT MIN(id) FROM tags";
-            string maxQuery = $"SELECT MAX(id) FROM tags";
+            string randQuery = $"SELECT id FROM tags ORDER BY RAND() LIMIT 1";
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            Random rand = new Random();
-            int minId = 0;
-            int maxId = 0;
-            int chosen = 0;
+            int id = 0;
             string tag = "";
 
             try
             {
                 Conn.Open();
 
-                cmd = new MySqlCommand(minQuery, Conn);
+                cmd = new MySqlCommand(randQuery, Conn);
                 rdr = cmd.ExecuteReader();
 
                 while (rdr.Read())
                 {
-                    minId = (int)rdr[0];
+                    id = (int)rdr[0];
                 }
-
-                rdr.Close();
-
-                cmd = new MySqlCommand(maxQuery, Conn);
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
-                {
-                    maxId = (int)rdr[0];
-                }
-
-                rdr.Close();
-
-                chosen = rand.Next(minId, maxId + 1);
             }
             catch (Exception e)
             {
@@ -203,9 +185,9 @@ namespace LobitaBot
 
             Conn.Close();
 
-            if (chosen > 0)
+            if (id > 0)
             {
-                tag = LookupTagById(chosen);
+                tag = LookupTagById(id);
             }
 
             return tag;
