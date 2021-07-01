@@ -7,7 +7,7 @@ namespace LobitaBot
 {
     public class DbSeriesIndex : DbIndex, ITagIndex
     {
-        public DbSeriesIndex(string dbName, CacheService cacheService) : base(dbName, cacheService) { }
+        public DbSeriesIndex(string dbName, int batchLimit, CacheService cacheService) : base(dbName, batchLimit, cacheService) { }
 
         public PostData LookupRandomPost(string searchTerm)
         {

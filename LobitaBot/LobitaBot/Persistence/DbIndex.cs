@@ -10,10 +10,10 @@ namespace LobitaBot
     {
         protected MySqlConnection Conn { get; }
         protected CacheService _cacheService;
+        protected int limit;
         protected const int TimeOut = 300;
-        protected const int Limit = 10000;
 
-        protected DbIndex(string dbName, CacheService cacheService)
+        protected DbIndex(string dbName, int batchLimit, CacheService cacheService)
         {
             Conn = new MySqlConnection(
                 $"server={Environment.GetEnvironmentVariable("DB_HOST")};" +
@@ -22,6 +22,7 @@ namespace LobitaBot
                 $"password={Environment.GetEnvironmentVariable("DB_PWD")};" +
                 $"Allow User Variables=true;" +
                 $"Ignore Prepare=false;");
+            limit = batchLimit;
             _cacheService = cacheService;
         }
 
@@ -46,7 +47,7 @@ namespace LobitaBot
             MySqlDataReader rdr;
             PostData pd;
             int i = 0;
-            string postQueryLimit = postQuery + $" LIMIT {Limit}";
+            string postQueryLimit = postQuery + $" LIMIT {limit}";
 
             try
             {
@@ -91,7 +92,7 @@ namespace LobitaBot
 
             while (!endReached && !token.IsCancellationRequested)
             {
-                offset += Limit;
+                offset += limit;
                 postQueryOffset = queryString + $" OFFSET {offset}";
 
                 cmd = new MySqlCommand(postQueryOffset, Conn);

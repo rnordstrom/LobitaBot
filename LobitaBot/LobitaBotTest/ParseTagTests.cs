@@ -7,7 +7,10 @@ namespace LobitaBot.Tests
     public class ParseTagTests
     {
         private ITagIndex index = 
-            new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
+            new DbCharacterIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
+                ConfigUtils.GetBatchQueryLimit(Constants.TestConfig), 
+                new CacheService());
         private string exampleTag = "gawr_gura";
 
         [TestMethod()]
