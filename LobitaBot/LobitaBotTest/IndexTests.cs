@@ -7,9 +7,15 @@ namespace LobitaBot.Tests
     public class IndexTests
     {
         DbCharacterIndex charIndex = 
-            new DbCharacterIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
+            new DbCharacterIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
+                ConfigUtils.GetBatchQueryLimit(Constants.TestConfig), 
+                new CacheService());
         DbSeriesIndex seriesIndex = 
-            new DbSeriesIndex(ConfigUtils.GetCurrentDatabase(Constants.TestConfig), new CacheService());
+            new DbSeriesIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
+                ConfigUtils.GetBatchQueryLimit(Constants.TestConfig), 
+                new CacheService());
         private string exampleTag = "gawr_gura";
         private string withApostrophe = "ninomae_ina'nis";
         private string nonExistant = "couldneverexist";
@@ -101,7 +107,7 @@ namespace LobitaBot.Tests
             Assert.IsNotNull(pd.AdditionalData);
             Assert.AreEqual(exampleTag, pd.TagName);
             Assert.AreEqual(seriesName, pd.SeriesName);
-            Assert.AreEqual("3.jpg", pd.Link);
+            Assert.AreEqual("3.png", pd.Link);
         }
 
         [TestMethod]

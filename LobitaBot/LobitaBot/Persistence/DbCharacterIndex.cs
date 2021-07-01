@@ -12,7 +12,7 @@ namespace LobitaBot
                 $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
                 $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = ";
 
-        public DbCharacterIndex(string dbName, CacheService cacheService) : base(dbName, cacheService) { }
+        public DbCharacterIndex(string dbName, int batchLimit, CacheService cacheService) : base(dbName, batchLimit, cacheService) { }
 
         public PostData LookupRandomPost(string searchTerm)
         {

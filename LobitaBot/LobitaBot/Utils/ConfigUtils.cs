@@ -17,5 +17,17 @@ namespace LobitaBot
                 .SelectSingleNode("CurrentDatabase")
                 .InnerText;
         }
+
+        public static int GetBatchQueryLimit(string configDirectory)
+        {
+            XmlDocument doc = new XmlDocument();
+
+            doc.Load(Path.Join(Environment.GetEnvironmentVariable("CONFIG_LOCATION"), configDirectory, Constants.ConfigFile));
+
+            return int.Parse(doc
+                .SelectSingleNode("items")
+                .SelectSingleNode("BatchQueryLimit")
+                .InnerText);
+        }
     }
 }
