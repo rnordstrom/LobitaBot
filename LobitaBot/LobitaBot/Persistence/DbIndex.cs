@@ -8,17 +8,14 @@ namespace LobitaBot
 {
     public abstract class DbIndex
     {
-        protected CacheService _cacheService;
         protected int limit;
         protected const int TimeOut = 300;
         string _dbName;
         protected string connectionString;
 
-        protected DbIndex(string dbName, int batchLimit, CacheService cacheService)
+        protected DbIndex(string dbName)
         {
             _dbName = dbName;
-            limit = batchLimit;
-            _cacheService = cacheService;
         }
 
         protected MySqlConnection Connect()
@@ -36,15 +33,80 @@ namespace LobitaBot
             return Conn;
         }
 
-        protected ICollection<int> GetLinkIdsForTag(string tagName)
+        protected string BuildPostQuery(string baseQuery, string tagName, int linkId)
         {
+            return baseQuery.Replace("&", tagName).Replace("%", linkId.ToString());
+        }
+
+        protected int GetIndexForPostId(string tagName, int postId)
+        {
+            List<int> linkIds = GetLinkIdsForTag(tagName);
+
+            return linkIds.IndexOf(postId);
+        }
+
+        protected int GetRandomLinkIdForQuery(string postQuery)
+        {
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+            List<int> idList = new List<int>();
+            Random rand = new Random();
+            int index;
+
+            using (MySqlConnection Conn = Connect())
+            {
+                try
+                {
+                    cmd = new MySqlCommand(postQuery, Conn);
+                    cmd.CommandTimeout = TimeOut;
+
+                    using (rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            idList.Add((int)rdr[0]);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+                }
+            }
+
+            index = rand.Next(0, idList.Count);
+
+            return idList.Count > 0 ? idList[index] : 0;
+        }
+
+        protected int GetNextLinkId(string tagName, int currentId)
+        {
+            List<int> linkIds = GetLinkIdsForTag(tagName);
+            int idIndex = linkIds.IndexOf(currentId);
+            int nextIndex = idIndex == linkIds.Count - 1 ? idIndex : idIndex + 1;
+
+            return linkIds[nextIndex];
+        }
+
+        protected int GetPreviousLinkId(string tagName, int currentId)
+        {
+            List<int> linkIds = GetLinkIdsForTag(tagName);
+            int idIndex = linkIds.IndexOf(currentId);
+            int previousIndex = idIndex == 0 ? idIndex : idIndex - 1;
+
+            return linkIds[previousIndex];
+        }
+
+        protected List<int> GetLinkIdsForTag(string tagName)
+        {
+            tagName = TagParser.EscapeApostrophe(tagName);
             string linkIdQuery = 
                 $"SELECT l.id " +
                 $"FROM tags AS t, tag_links AS tl, links AS l " +
                 $"WHERE t.id = tl.tag_id AND tl.link_id = l.id AND t.name = '{tagName}'";
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            HashSet<int> linkIds = new HashSet<int>();
+            List<int> linkIds = new List<int>();
 
             using (MySqlConnection Conn = Connect())
             {
@@ -70,13 +132,11 @@ namespace LobitaBot
             return linkIds;
         }
 
-        protected ICollection<PostData> GetAllPostsForQuery(string postQuery, AdditionalPostData additionalData = null)
+        protected PostData GetPostForQuery(string postQuery)
         {
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            PostData pd;
-            int i = 0;
-            HashSet<PostData> postSet = new HashSet<PostData>();
+            PostData pd = null;
 
             using (MySqlConnection Conn = Connect())
             {
@@ -89,14 +149,7 @@ namespace LobitaBot
                     {
                         while (rdr.Read())
                         {
-                            pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++, (int)rdr[4]);
-
-                            if (additionalData != null)
-                            {
-                                pd.AdditionalData = additionalData;
-                            }
-
-                            postSet.Add(pd);
+                            pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], (int)rdr[4], (int)rdr[5]);
                         }
                     }
                 }
@@ -106,88 +159,12 @@ namespace LobitaBot
                 }
             }
 
-            return postSet;
-        }
-
-        protected void PopulateCacheParallel(string postQuery, AdditionalPostData additionalData = null)
-        {
-            _cacheService.CTS.Cancel();
-
-            try
+            if (pd != null)
             {
-                _cacheService.CacheTask.Wait();
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+                pd.PostIndex = GetIndexForPostId(pd.TagName, pd.LinkId);
             }
 
-            _cacheService.Clear();
-
-            _cacheService.CTS = new CancellationTokenSource();
-
-            int i = 0;
-            string postQueryLimit = postQuery + $" LIMIT {limit}";
-
-            try
-            {
-                foreach (PostData pd in GetAllPostsForQuery(postQueryLimit, additionalData))
-                {
-                    _cacheService.Add(pd);
-                }
-
-                _cacheService.CacheTask = Task.Factory.StartNew(() => PopulateCacheParallel(postQueryLimit, i, _cacheService.CTS.Token, additionalData), TaskCreationOptions.LongRunning);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
-        }
-
-        private Task PopulateCacheParallel(string queryString, int index, CancellationToken token, AdditionalPostData additionalData)
-        {
-            long offset = 0;
-            string postQueryOffset;
-            bool endReached = false;
-            MySqlCommand cmd;
-            MySqlDataReader rdr;
-            PostData pd;
-
-            while (!endReached && !token.IsCancellationRequested)
-            {
-                offset += limit;
-                postQueryOffset = queryString + $" OFFSET {offset}";
-
-                using (MySqlConnection Conn = Connect())
-                {
-                    cmd = new MySqlCommand(postQueryOffset, Conn);
-                    cmd.CommandTimeout = TimeOut;
-
-                    using (rdr = cmd.ExecuteReader())
-                    {
-                        if (rdr.HasRows)
-                        {
-                            while (rdr.Read())
-                            {
-                                pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], index++, (int)rdr[4]);
-
-                                if (additionalData != null)
-                                {
-                                    pd.AdditionalData = additionalData;
-                                }
-
-                                _cacheService.Add(pd);
-                            }
-                        }
-                        else
-                        {
-                            endReached = true;
-                        }
-                    }
-                }
-            }
-
-            return Task.CompletedTask;
+            return pd;
         }
 
         protected string LookupTagById(string tagQuery)

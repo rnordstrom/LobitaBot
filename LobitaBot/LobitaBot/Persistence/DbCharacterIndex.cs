@@ -8,93 +8,67 @@ namespace LobitaBot
 {
     public class DbCharacterIndex : DbIndex, ITagIndex
     {
-        private string postQuery =
-                $"SELECT t.id, t.name, l.url, s.name, l.id " +
+        private string _postQuery =
+                $"SELECT t.id, t.name, l.url, s.name, l.id, t.post_count " +
                 $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = ";
+                $"WHERE l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id AND t.name = '&' AND l.id = %";
 
-        public DbCharacterIndex(string dbName, int batchLimit, CacheService cacheService) : base(dbName, batchLimit, cacheService) { }
+        public DbCharacterIndex(string dbName) : base(dbName) { }
 
         public PostData LookupRandomPost(string searchTerm)
         {
-            if (_cacheService.CharacterAloneInCache(searchTerm))
-            {
-                return _cacheService.CacheRandom();
-            }
-
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
+            string linkIdQuery =
+                $"SELECT tl.link_id " +
+                $"FROM tags AS t, tag_links AS tl " +
+                $"WHERE t.id = tl.tag_id AND t.name = '{searchTerm}'";
 
-            PopulateCacheParallel(postQuery + $"'{searchTerm}'");
-
-            return _cacheService.CacheRandom();
+            return GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, GetRandomLinkIdForQuery(linkIdQuery)));
         }
 
-        public PostData LookupNextPost(string searchTerm, int index)
+        public PostData LookupNextPost(string searchTerm, int postId)
         {
-            if (_cacheService.CharacterAloneInCache(searchTerm))
-            {
-                return _cacheService.CacheNext(index);
-            }
-
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
+            int nextLinkId = GetNextLinkId(searchTerm, postId);
+            PostData pd = GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, nextLinkId));
 
-            PopulateCacheParallel(postQuery + $"'{searchTerm}'");
+            pd.PostIndex = GetIndexForPostId(searchTerm, nextLinkId);
 
-            return _cacheService.CacheNext(index);
+            return pd;
         }
 
-        public PostData LookupPreviousPost(string searchTerm, int index)
+        public PostData LookupPreviousPost(string searchTerm, int postId)
         {
-            if (_cacheService.CharacterAloneInCache(searchTerm))
-            {
-                return _cacheService.CachePrevious(index);
-            }
-
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
+            int previousLinkId = GetPreviousLinkId(searchTerm, postId);
+            PostData pd = GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, previousLinkId));
 
-            PopulateCacheParallel(postQuery + $"'{searchTerm}'");
+            pd.PostIndex = GetIndexForPostId(searchTerm, previousLinkId);
 
-            return _cacheService.CachePrevious(index);
+            return pd;
         }
 
         public PostData LookupRandomCollab(string[] searchTerms)
         {
-            if (_cacheService.CollabInCache(searchTerms))
-            {
-                return _cacheService.CacheRandom();
-            }
-
-            PopulateCacheWithAdditionalData(searchTerms);
-
-            PostData postData = _cacheService.CacheRandom();
+            PostData postData = GetRandomCollabPost(searchTerms);
 
             return postData;
         }
 
-        public PostData LookupPreviousCollab(string[] searchTerms, int index)
+        public PostData LookupPreviousCollab(string[] searchTerms, int postId)
         {
-            if (_cacheService.CollabInCache(searchTerms))
-            {
-                return _cacheService.CachePrevious(index);
-            }
+            GetRandomCollabPost(searchTerms);
 
-            PopulateCacheWithAdditionalData(searchTerms);
-
-            PostData postData = _cacheService.CachePrevious(index);
+            PostData postData = PreviousCollabPost(searchTerms, postId);
 
             return postData;
         }
 
-        public PostData LookupNextCollab(string[] searchTerms, int index)
+        public PostData LookupNextCollab(string[] searchTerms, int postId)
         {
-            if (_cacheService.CollabInCache(searchTerms))
-            {
-                return _cacheService.CacheNext(index);
-            }
+            GetRandomCollabPost(searchTerms);
 
-            PopulateCacheWithAdditionalData(searchTerms);
-
-            PostData postData = _cacheService.CacheNext(index);
+            PostData postData = NextCollabPost(searchTerms, postId);
 
             return postData;
         }
@@ -271,9 +245,8 @@ namespace LobitaBot
         {
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            ICollection<PostData> collabPosts = GetCollabPosts(searchTerms);
-            List<int> linkIds = collabPosts.Select(e => e.LinkId).ToList();
-            string linkIdsString = ToCommaSeparatedString(linkIds);
+            ICollection<int> commonLinkIds = GetCommonLinkIds(searchTerms);
+            string linkIdsString = ToCommaSeparatedString(commonLinkIds);
 
             string suggestionsQuery =
                 $"SELECT DISTINCT t.name " +
@@ -314,38 +287,81 @@ namespace LobitaBot
             return characters;
         }
 
-        private void PopulateCacheWithAdditionalData(string[] searchTerms)
+        
+
+        private PostData GetRandomCollabPost(string[] searchTerms)
         {
-            ICollection<PostData> postCollection = GetCollabPosts(searchTerms);
+            PostData pd = RandomCollabPost(searchTerms);
             AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
 
-            foreach (PostData pd in postCollection)
-            {
-                pd.AdditionalData = apd;
-            }
+            pd.AdditionalData = apd;
 
-            _cacheService.SetCache(postCollection);
+            return pd;
         }
 
-        private ICollection<PostData> GetCollabPosts(string[] searchTerms)
+        private PostData RandomCollabPost(string[] searchTerms)
         {
-            IEnumerable<int> linkIds = GetLinkIdsForTag(TagParser.EscapeApostrophe(searchTerms[0]));
+            Random rand = new Random();
+            List<int> commonLinkIds = GetCommonLinkIds(searchTerms).ToList();
+            commonLinkIds.Sort();
+            string searchTermEscaped = TagParser.EscapeApostrophe(searchTerms[0]);
+            int randomId = commonLinkIds[rand.Next(0, commonLinkIds.Count())];
+            string postQuery = BuildPostQuery(_postQuery, searchTermEscaped, randomId);
+
+            PostData pd = GetPostForQuery(postQuery);
+
+            pd.PostIndex = commonLinkIds.IndexOf(randomId);
+            pd.PostCount = commonLinkIds.Count();
+
+            return pd;
+        }
+
+        private PostData NextCollabPost(string[] searchTerms, int currentId)
+        {
+            List<int> commonLinkIds = GetCommonLinkIds(searchTerms).ToList();
+            commonLinkIds.Sort();
+            int idIndex = commonLinkIds.IndexOf(currentId);
+            int nextIndex = idIndex == commonLinkIds.Count() - 1 ? idIndex : idIndex + 1;
+            string postQuery = BuildPostQuery(_postQuery, TagParser.EscapeApostrophe(searchTerms[0]), commonLinkIds[nextIndex]);
+
+            PostData pd = GetPostForQuery(postQuery);
+            AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
+
+            pd.PostIndex = nextIndex;
+            pd.PostCount = commonLinkIds.Count();
+            pd.AdditionalData = apd;
+
+            return pd;
+        }
+
+        private PostData PreviousCollabPost(string[] searchTerms, int currentId)
+        {
+            List<int> commonLinkIds = GetCommonLinkIds(searchTerms).ToList();
+            commonLinkIds.Sort();
+            int idIndex = commonLinkIds.IndexOf(currentId);
+            int previousIndex = idIndex == 0 ? idIndex : idIndex - 1;
+            string postQuery = BuildPostQuery(_postQuery, TagParser.EscapeApostrophe(searchTerms[0]), commonLinkIds[previousIndex]);
+
+            PostData pd = GetPostForQuery(postQuery);
+            AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
+
+            pd.PostIndex = previousIndex;
+            pd.PostCount = commonLinkIds.Count();
+            pd.AdditionalData = apd;
+
+            return pd;
+        }
+
+        private ICollection<int> GetCommonLinkIds(string[] searchTerms)
+        {
+            IEnumerable<int> linkIds = GetLinkIdsForTag(searchTerms[0]);
 
             for (int i = 1; i < searchTerms.Length; i++)
             {
-                linkIds = linkIds.Intersect(GetLinkIdsForTag(TagParser.EscapeApostrophe(searchTerms[i])));
+                linkIds = linkIds.Intersect(GetLinkIdsForTag(searchTerms[i]));
             }
 
-            string linkIdString = ToCommaSeparatedString(linkIds.ToList());
-
-            if (linkIdString != string.Empty)
-            {
-                return IndexCollection(GetAllPostsForQuery(postQuery + $"'{TagParser.EscapeApostrophe(searchTerms[0])}' " + $"AND l.id IN ({linkIdString})"));
-            }
-            else
-            {
-                return new List<PostData>();
-            }
+            return linkIds.ToList();
         }
 
         private AdditionalPostData BuildAdditionalPostData(string[] searchTerms)
@@ -369,18 +385,6 @@ namespace LobitaBot
             }
 
             return new AdditionalPostData(additionalTagIds, additionalTagNames, additionalSeriesNames);
-        }
-
-        private ICollection<PostData> IndexCollection(ICollection<PostData> postCollection)
-        {
-            int i = 0;
-
-            foreach (PostData pd in postCollection)
-            {
-                pd.PostIndex = i++;
-            }
-
-            return postCollection;
         }
 
         private string ToCommaSeparatedString(ICollection<int> numberList)

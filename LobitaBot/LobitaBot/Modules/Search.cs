@@ -22,7 +22,6 @@ namespace LobitaBot
     public class Search : ModuleBase<SocketCommandContext>
     {
         private PageService _pageService;
-        private CacheService _cacheService;
         private const string SuggestionTitle = "<Tag ID> Tag Name (#Posts)";
         private const string ExcessiveResults = "Your search for '%' is too broad! Please be more specific.";
         private const string NoResults = "No results found for '%'.";
@@ -43,18 +42,13 @@ namespace LobitaBot
         private DbCharacterIndex _characterIndex;
         private DbSeriesIndex _seriesIndex;
 
-        public Search(PageService ps, CacheService cs)
+        public Search(PageService ps)
         {
             _pageService = ps;
-            _cacheService = cs;
             _characterIndex = new DbCharacterIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig),
-                ConfigUtils.GetBatchReadLimit(Constants.ProductionConfig),
-                _cacheService);
+                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig));
             _seriesIndex = new DbSeriesIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig),
-                ConfigUtils.GetBatchReadLimit(Constants.ProductionConfig),
-                _cacheService);
+                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig));
         }
 
         [Command("character")]
@@ -76,12 +70,8 @@ namespace LobitaBot
                     await toSend.AddReactionAsync(Constants.RerollCharacter);
                     await toSend.AddReactionAsync(Constants.RerollSeries);
                     await toSend.AddReactionAsync(Constants.Characters);
-
-                    if (_cacheService.CacheSize() < MaxSequentialImages)
-                    {
-                        await toSend.AddReactionAsync(Constants.PreviousImage);
-                        await toSend.AddReactionAsync(Constants.NextImage);
-                    }
+                    await toSend.AddReactionAsync(Constants.PreviousImage);
+                    await toSend.AddReactionAsync(Constants.NextImage);
                 }
                 else
                 {
@@ -318,12 +308,8 @@ namespace LobitaBot
                 {
                     await toSend.AddReactionAsync(Constants.RerollCollab);
                     await toSend.AddReactionAsync(Constants.Characters);
-
-                    if (_cacheService.CacheSize() < MaxSequentialImages)
-                    {
-                        await toSend.AddReactionAsync(Constants.PreviousImage);
-                        await toSend.AddReactionAsync(Constants.NextImage);
-                    }
+                    await toSend.AddReactionAsync(Constants.PreviousImage);
+                    await toSend.AddReactionAsync(Constants.NextImage);
                 }
                 else
                 {
@@ -341,7 +327,7 @@ namespace LobitaBot
             }
         }
 
-        private async Task<EmbedBuilder> SearchCollabAsync(string[] searchTerms, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
+        private async Task<EmbedBuilder> SearchCollabAsync(string[] searchTerms, int postId = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
         {
             if (!_pageService.HandlerAdded)
             {
@@ -436,10 +422,10 @@ namespace LobitaBot
                         postData = charIndex.LookupRandomCollab(searchTerms);
                         break;
                     case ROLL_SEQUENCE.PREVIOUS:
-                        postData = charIndex.LookupPreviousCollab(searchTerms, postIndex);
+                        postData = charIndex.LookupPreviousCollab(searchTerms, postId);
                         break;
                     case ROLL_SEQUENCE.NEXT:
-                        postData = charIndex.LookupNextCollab(searchTerms, postIndex);
+                        postData = charIndex.LookupNextCollab(searchTerms, postId);
                         break;
                 }
 
@@ -447,10 +433,7 @@ namespace LobitaBot
                     Environment.NewLine +
                     listCharactersDescription + ".";
 
-                if (_cacheService.CacheSize() < MaxSequentialImages)
-                {
-                    embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-                }
+                embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
 
                 if (postData != null && !string.IsNullOrEmpty(postData.Link))
                 {
@@ -538,10 +521,7 @@ namespace LobitaBot
                 switch (category)
                 {
                     case CATEGORY.CHARACTER:
-                        if (_cacheService.CacheSize() < MaxSequentialImages)
-                        {
-                            embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-                        }
+                        embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
                         break;
                 }
 
@@ -668,7 +648,7 @@ namespace LobitaBot
                             .WithImageUrl(postData.Link)
                             .WithUrl(postData.Link)
                             .WithAuthor(Context.Client.CurrentUser)
-                            .WithFooter($"Image {postData.PostIndex + 1} of {_cacheService.CacheSize()}")
+                            .WithFooter($"Image {postData.PostIndex + 1} of {postData.PostCount}")
                             .WithColor(Color.DarkGrey)
                             .WithCurrentTimestamp();
         }
@@ -719,6 +699,7 @@ namespace LobitaBot
             int imageIndex = 0;
             int numImages = 0;
             string characterId;
+            int postId;
             string seriesName;
             EmbedBuilder embedBuilder;
             Embed embed;
@@ -741,11 +722,8 @@ namespace LobitaBot
                         await toSend.AddReactionAsync(Constants.RerollSeries);
                         await toSend.AddReactionAsync(Constants.Characters);
 
-                        if (_cacheService.CacheSize() < MaxSequentialImages)
-                        {
-                            await toSend.AddReactionAsync(Constants.PreviousImage);
-                            await toSend.AddReactionAsync(Constants.NextImage);
-                        }
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
                     }
                 }
             }
@@ -781,18 +759,15 @@ namespace LobitaBot
                     {
                         await toSend.AddReactionAsync(Constants.RerollCollab);
                         await toSend.AddReactionAsync(Constants.Characters);
-
-                        if (_cacheService.CacheSize() < MaxSequentialImages)
-                        {
-                            await toSend.AddReactionAsync(Constants.PreviousImage);
-                            await toSend.AddReactionAsync(Constants.NextImage);
-                        }
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
                     }
                 }
             }
             else if (reaction.Emote.Name == Constants.PreviousImage.Name)
             {
                 characterId = embedFields[0].Value;
+                postId = int.Parse(embedFields[1].Value);
                 footerText.Split(" ").First(i => int.TryParse(i, out imageIndex));
                 footerText.Split(" ").Last(i => int.TryParse(i, out numImages));
 
@@ -800,7 +775,7 @@ namespace LobitaBot
                 {
                     if (characterId.Contains(", "))
                     {
-                        embedBuilder = SearchCollabAsync(characterId.Split(", "), imageIndex - 1, ROLL_SEQUENCE.PREVIOUS).Result;
+                        embedBuilder = SearchCollabAsync(characterId.Split(", "), postId, ROLL_SEQUENCE.PREVIOUS).Result;
 
                         if (embedBuilder != null)
                         {
@@ -812,11 +787,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollCollab);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -826,7 +798,7 @@ namespace LobitaBot
                             characterId,
                             CATEGORY.CHARACTER,
                             _characterIndex,
-                            imageIndex - 1,
+                            postId,
                             ROLL_SEQUENCE.PREVIOUS).Result;
 
                         if (embedBuilder != null)
@@ -840,11 +812,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollSeries);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -853,6 +822,7 @@ namespace LobitaBot
             else if (reaction.Emote.Name == Constants.NextImage.Name)
             {
                 characterId = embedFields[0].Value;
+                postId = int.Parse(embedFields[1].Value);
                 footerText.Split(" ").First(i => int.TryParse(i, out imageIndex));
                 footerText.Split(" ").Last(i => int.TryParse(i, out numImages));
 
@@ -860,7 +830,7 @@ namespace LobitaBot
                 {
                     if (characterId.Contains(", "))
                     {
-                        embedBuilder = SearchCollabAsync(characterId.Split(", "), imageIndex - 1, ROLL_SEQUENCE.NEXT).Result;
+                        embedBuilder = SearchCollabAsync(characterId.Split(", "), postId, ROLL_SEQUENCE.NEXT).Result;
 
                         if (embedBuilder != null)
                         {
@@ -872,11 +842,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollCollab);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -886,7 +853,7 @@ namespace LobitaBot
                             characterId,
                             CATEGORY.CHARACTER,
                             _characterIndex,
-                            imageIndex - 1,
+                            postId,
                             ROLL_SEQUENCE.NEXT).Result;
 
                         if (embedBuilder != null)
@@ -900,11 +867,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollSeries);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }

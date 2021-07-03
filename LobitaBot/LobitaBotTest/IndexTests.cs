@@ -8,14 +8,10 @@ namespace LobitaBot.Tests
     {
         DbCharacterIndex charIndex = 
             new DbCharacterIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
-                ConfigUtils.GetBatchReadLimit(Constants.TestConfig), 
-                new CacheService());
+                ConfigUtils.GetCurrentDatabase(Constants.TestConfig));
         DbSeriesIndex seriesIndex = 
             new DbSeriesIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
-                ConfigUtils.GetBatchReadLimit(Constants.TestConfig), 
-                new CacheService());
+                ConfigUtils.GetCurrentDatabase(Constants.TestConfig));
         private string exampleTag = "gawr_gura";
         private string withApostrophe = "ninomae_ina'nis";
         private string nonExistant = "couldneverexist";
@@ -57,14 +53,14 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupNextPostTest()
         {
-            int index = 1;
-            PostData pd = charIndex.LookupNextPost(exampleTag, index);
+            int postId = 2;
+            PostData pd = charIndex.LookupNextPost(exampleTag, postId);
 
             Assert.IsNotNull(pd);
-            Assert.AreEqual(index + 1, pd.PostIndex);
+            Assert.AreEqual(2, pd.PostIndex);
 
-            index = 999;
-            pd = charIndex.LookupNextPost(exampleTag, index);
+            postId = 3;
+            pd = charIndex.LookupNextPost(exampleTag, postId);
 
             Assert.IsNotNull(pd);
             Assert.AreEqual(2, pd.PostIndex);
@@ -73,14 +69,14 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupPreviousPostTest()
         {
-            int index = 1;
-            PostData pd = charIndex.LookupPreviousPost(exampleTag, index);
+            int postId = 2;
+            PostData pd = charIndex.LookupPreviousPost(exampleTag, postId);
 
             Assert.IsNotNull(pd);
-            Assert.AreEqual(index - 1, pd.PostIndex);
+            Assert.AreEqual(0, pd.PostIndex);
 
-            index = -999;
-            pd = charIndex.LookupPreviousPost(exampleTag, index);
+            postId = 1;
+            pd = charIndex.LookupPreviousPost(exampleTag, postId);
 
             Assert.IsNotNull(pd);
             Assert.AreEqual(0, pd.PostIndex);
@@ -113,8 +109,8 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupNextCollabTest()
         {
-            int index = 0;
-            PostData pd = charIndex.LookupNextCollab(new string[] { exampleTag, withApostrophe }, index);
+            int postId = 3;
+            PostData pd = charIndex.LookupNextCollab(new string[] { exampleTag, withApostrophe }, postId);
 
             Assert.IsNotNull(pd);
             Assert.AreEqual(0, pd.PostIndex);
@@ -123,8 +119,8 @@ namespace LobitaBot.Tests
         [TestMethod]
         public void LookupPreviousCollabTest()
         {
-            int index = 0;
-            PostData pd = charIndex.LookupPreviousCollab(new string[] { exampleTag, withApostrophe }, index);
+            int postId = 3;
+            PostData pd = charIndex.LookupPreviousCollab(new string[] { exampleTag, withApostrophe }, postId);
 
             Assert.IsNotNull(pd);
             Assert.AreEqual(0, pd.PostIndex);
