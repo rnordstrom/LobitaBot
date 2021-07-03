@@ -9,12 +9,12 @@ namespace LobitaBot.Tests
         DbCharacterIndex charIndex = 
             new DbCharacterIndex(
                 ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.TestConfig), 
+                ConfigUtils.GetBatchReadLimit(Constants.TestConfig), 
                 new CacheService());
         DbSeriesIndex seriesIndex = 
             new DbSeriesIndex(
                 ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.TestConfig), 
+                ConfigUtils.GetBatchReadLimit(Constants.TestConfig), 
                 new CacheService());
         private string exampleTag = "gawr_gura";
         private string withApostrophe = "ninomae_ina'nis";

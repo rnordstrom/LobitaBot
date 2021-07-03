@@ -70,8 +70,7 @@ namespace LobitaBot
                 }
             }
 
-            dataQuery = 
-                $"SELECT name, id, post_count FROM series WHERE name IN ({sb})";
+            dataQuery = $"SELECT name, id, post_count FROM series WHERE name IN ({sb})";
 
             return LookupTagData(dataQuery);
         }
@@ -108,24 +107,25 @@ namespace LobitaBot
 
             List<string> characters = new List<string>();
 
-            try
+            using (MySqlConnection Conn = Connect())
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(characterQuery, Conn);
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
+                try
                 {
-                    characters.Add((string)rdr[0]);
+                    cmd = new MySqlCommand(characterQuery, Conn);
+
+                    using (rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            characters.Add((string)rdr[0]);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
                 }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
-
-            Conn.Close();
 
             return characters;
         }

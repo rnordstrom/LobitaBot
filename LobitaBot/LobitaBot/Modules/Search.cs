@@ -39,12 +39,22 @@ namespace LobitaBot
         private const int MaxSearchResults = 10000;
         private const int MaxSequentialImages = 100;
         private const bool IsInline = false;
-        List<List<TagData>> pages;
+        private List<List<TagData>> pages;
+        private DbCharacterIndex _characterIndex;
+        private DbSeriesIndex _seriesIndex;
 
         public Search(PageService ps, CacheService cs)
         {
             _pageService = ps;
             _cacheService = cs;
+            _characterIndex = new DbCharacterIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig),
+                ConfigUtils.GetBatchReadLimit(Constants.ProductionConfig),
+                _cacheService);
+            _seriesIndex = new DbSeriesIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig),
+                ConfigUtils.GetBatchReadLimit(Constants.ProductionConfig),
+                _cacheService);
         }
 
         [Command("character")]
@@ -52,12 +62,7 @@ namespace LobitaBot
             "Lists all alternatives if a conclusive match is not found.")]
         public async Task CharacterAsync(string charName = null)
         {
-            EmbedBuilder embedBuilder = 
-                SearchAsync(charName, CATEGORY.CHARACTER, 
-                    new DbCharacterIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+            EmbedBuilder embedBuilder = SearchAsync(charName, CATEGORY.CHARACTER, _characterIndex).Result;
             ulong msgId;
             PageData pageData;
 
@@ -99,12 +104,7 @@ namespace LobitaBot
             "Lists all alternatives if a conclusive match is not found.")]
         public async Task SeriesAsync(string seriesName = null)
         {
-            EmbedBuilder embedBuilder 
-                = SearchAsync(seriesName, CATEGORY.SERIES, 
-                    new DbSeriesIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+            EmbedBuilder embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, _seriesIndex).Result;
             ulong msgId;
             PageData pageData;
 
@@ -152,16 +152,8 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex charIndex = 
-                new DbCharacterIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
-            DbSeriesIndex seriesIndex = 
-                new DbSeriesIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
+            DbCharacterIndex charIndex = _characterIndex;
+            DbSeriesIndex seriesIndex = _seriesIndex;
             int id;
             string tag;
             string charNameEscaped;
@@ -237,15 +229,8 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbSeriesIndex seriesIndex = 
-                new DbSeriesIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
-            DbCharacterIndex charIndex = new DbCharacterIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                _cacheService);
+            DbSeriesIndex seriesIndex = _seriesIndex;
+            DbCharacterIndex charIndex = _characterIndex;
             int id;
             string tag;
             string seriesNameEscaped;
@@ -391,10 +376,7 @@ namespace LobitaBot
                 }
             }
 
-            DbCharacterIndex charIndex = new DbCharacterIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                _cacheService);
+            DbCharacterIndex charIndex = _characterIndex;
 
             int id;
             string tag;
@@ -611,11 +593,7 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex characterIndex = 
-                new DbCharacterIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
+            DbCharacterIndex characterIndex = _characterIndex;
             EmbedBuilder embed;
             PostData postData;
             string tag = characterIndex.LookupRandomTag();
@@ -750,11 +728,7 @@ namespace LobitaBot
             if (reaction.Emote.Name == Constants.RerollCharacter.Name)
             {
                 characterId = embedFields[0].Value;
-                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, 
-                    new DbCharacterIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, _characterIndex).Result;
 
                 if (embedBuilder != null)
                 {
@@ -778,11 +752,7 @@ namespace LobitaBot
             else if (reaction.Emote.Name == Constants.RerollSeries.Name)
             {
                 seriesName = TagParser.Format(embedFields[2].Value);
-                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, 
-                    new DbSeriesIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, _seriesIndex).Result;
 
                 if (embedBuilder != null)
                 {
@@ -855,10 +825,7 @@ namespace LobitaBot
                         embedBuilder = SearchAsync(
                             characterId,
                             CATEGORY.CHARACTER,
-                            new DbCharacterIndex(
-                                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                                _cacheService),
+                            _characterIndex,
                             imageIndex - 1,
                             ROLL_SEQUENCE.PREVIOUS).Result;
 
@@ -918,10 +885,7 @@ namespace LobitaBot
                         embedBuilder = SearchAsync(
                             characterId,
                             CATEGORY.CHARACTER,
-                            new DbCharacterIndex(
-                                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                                _cacheService),
+                            _characterIndex,
                             imageIndex - 1,
                             ROLL_SEQUENCE.NEXT).Result;
 
@@ -948,10 +912,7 @@ namespace LobitaBot
             }
             else if (reaction.Emote.Name == Constants.Characters.Name)
             {
-                DbCharacterIndex charIndex = 
-                    new DbCharacterIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), _cacheService);
+                DbCharacterIndex charIndex = _characterIndex;
                 List<string> charsInPost = charIndex.CharactersInPost(int.Parse(embedFields[1].Value));
                 List<TagData> charData = charIndex.LookupTagData(charsInPost);
 

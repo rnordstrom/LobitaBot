@@ -1,6 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace LobitaBot
@@ -166,24 +167,25 @@ namespace LobitaBot
             int id = 0;
             string tag = "";
 
-            try
+            using (MySqlConnection Conn = Connect())
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(randQuery, Conn);
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
+                try
                 {
-                    id = (int)rdr[0];
+                    cmd = new MySqlCommand(randQuery, Conn);
+
+                    using (rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            id = (int)rdr[0];
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
                 }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
-
-            Conn.Close();
 
             if (id > 0)
             {
@@ -207,24 +209,25 @@ namespace LobitaBot
 
             string series = "";
 
-            try
+            using (MySqlConnection Conn = Connect())
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(seriesQuery, Conn);
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
+                try
                 {
-                    series = (string)rdr[0];
+                    cmd = new MySqlCommand(seriesQuery, Conn);
+
+                    using (rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            series = (string)rdr[0];
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
                 }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
-
-            Conn.Close();
 
             return series;
         }
@@ -241,24 +244,25 @@ namespace LobitaBot
 
             List<string> characters = new List<string>();
 
-            try
+            using (MySqlConnection Conn = Connect())
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(postQuery, Conn);
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
+                try
                 {
-                    characters.Add((string)rdr[0]);
+                    cmd = new MySqlCommand(postQuery, Conn);
+
+                    using (rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            characters.Add((string)rdr[0]);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
                 }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
-
-            Conn.Close();
 
             return characters;
         }
@@ -267,41 +271,37 @@ namespace LobitaBot
         {
             MySqlCommand cmd;
             MySqlDataReader rdr;
+            ICollection<PostData> collabPosts = GetCollabPosts(searchTerms);
+            List<int> linkIds = collabPosts.Select(e => e.LinkId).ToList();
+            string linkIdsString = ToCommaSeparatedString(linkIds);
 
-            string[] searchTermsEscaped = new string[searchTerms.Length];
-
-            for (int i = 0; i < searchTerms.Length; i++)
-            {
-                searchTermsEscaped[i] = TagParser.EscapeApostrophe(searchTerms[i]);
-            }
-
-            string collabQuery = BuildCollabQuery(searchTermsEscaped);
             string suggestionsQuery =
                 $"SELECT DISTINCT t.name " +
                 $"FROM tags AS t, tag_links AS tl, links AS l " +
-                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND l.id IN (SELECT link_id FROM ({collabQuery}) AS base)";
+                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND l.id IN ({linkIdsString})";
 
             List<string> characters = new List<string>();
 
-            try
+            using (MySqlConnection Conn = Connect())
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(suggestionsQuery, Conn);
-                cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
-
-                while (rdr.Read())
+                try
                 {
-                    characters.Add((string)rdr[0]);
+                    cmd = new MySqlCommand(suggestionsQuery, Conn);
+                    cmd.CommandTimeout = TimeOut;
+
+                    using (rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            characters.Add((string)rdr[0]);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
                 }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
-
-            Conn.Close();
 
             foreach (string s in searchTerms)
             {
@@ -314,40 +314,42 @@ namespace LobitaBot
             return characters;
         }
 
-        private string BuildCollabQuery(string[] searchTerms)
+        private void PopulateCacheWithAdditionalData(string[] searchTerms)
         {
-            string baseQuery =
-                $"SELECT t0.tag_id, t0.tag_name, t0.url, t0.series_name, t0.id AS link_id " +
-                $"FROM " +
-                $"(SELECT t.id AS tag_id, t.name AS tag_name, url, s.name AS series_name, l.id AS id " +
-                $"FROM links AS l, tag_links AS tl, tags AS t, series_tags AS st, series AS s " +
-                $"WHERE t.name = '{searchTerms[0]}' " +
-                $"AND l.id = tl.link_id AND t.id = tl.tag_id AND t.id = st.tag_id AND s.id = st.series_id) t0";
+            ICollection<PostData> postCollection = GetCollabPosts(searchTerms);
+            AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
+
+            foreach (PostData pd in postCollection)
+            {
+                pd.AdditionalData = apd;
+            }
+
+            _cacheService.SetCache(postCollection);
+        }
+
+        private ICollection<PostData> GetCollabPosts(string[] searchTerms)
+        {
+            IEnumerable<int> linkIds = GetLinkIdsForTag(TagParser.EscapeApostrophe(searchTerms[0]));
 
             for (int i = 1; i < searchTerms.Length; i++)
             {
-                baseQuery += " INNER JOIN ";
-                baseQuery +=
-                    $"(SELECT l.id AS id " +
-                    $"FROM tags AS t, tag_links AS tl, links AS l " +
-                    $"WHERE t.name = '{searchTerms[i]}' AND t.id = tl.tag_id AND l.id = tl.link_id) t{i}";
-                baseQuery += $" ON(t0.id = t{i}.id)";
+                linkIds = linkIds.Intersect(GetLinkIdsForTag(TagParser.EscapeApostrophe(searchTerms[i])));
             }
 
-            return baseQuery;
+            string linkIdString = ToCommaSeparatedString(linkIds.ToList());
+
+            if (linkIdString != string.Empty)
+            {
+                return IndexCollection(GetAllPostsForQuery(postQuery + $"'{TagParser.EscapeApostrophe(searchTerms[0])}' " + $"AND l.id IN ({linkIdString})"));
+            }
+            else
+            {
+                return new List<PostData>();
+            }
         }
 
-        private void PopulateCacheWithAdditionalData(string[] searchTerms)
+        private AdditionalPostData BuildAdditionalPostData(string[] searchTerms)
         {
-            string[] searchTermsEscaped = new string[searchTerms.Length];
-
-            for (int i = 0; i < searchTerms.Length; i++)
-            {
-                searchTermsEscaped[i] = TagParser.EscapeApostrophe(searchTerms[i]);
-            }
-
-            string baseQuery = BuildCollabQuery(searchTermsEscaped);
-
             List<string> additionalTagNames = new List<string>();
             List<int> additionalTagIds = new List<int>();
             List<string> additionalSeriesNames = new List<string>();
@@ -366,7 +368,38 @@ namespace LobitaBot
                 }
             }
 
-            PopulateCacheParallel(baseQuery, new AdditionalPostData(additionalTagIds, additionalTagNames, additionalSeriesNames));
+            return new AdditionalPostData(additionalTagIds, additionalTagNames, additionalSeriesNames);
+        }
+
+        private ICollection<PostData> IndexCollection(ICollection<PostData> postCollection)
+        {
+            int i = 0;
+
+            foreach (PostData pd in postCollection)
+            {
+                pd.PostIndex = i++;
+            }
+
+            return postCollection;
+        }
+
+        private string ToCommaSeparatedString(ICollection<int> numberList)
+        {
+            if (numberList.Count > 0)
+            {
+                StringBuilder numberString = new StringBuilder();
+
+                foreach (int n in numberList)
+                {
+                    numberString.Append($"{n},");
+                }
+
+                return numberString.Remove(numberString.Length - 1, 1).ToString();
+            }
+            else
+            {
+                return string.Empty;
+            }
         }
     }
 }

@@ -9,7 +9,7 @@ namespace LobitaBot.Tests
         private ITagIndex index = 
             new DbCharacterIndex(
                 ConfigUtils.GetCurrentDatabase(Constants.TestConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.TestConfig), 
+                ConfigUtils.GetBatchReadLimit(Constants.TestConfig), 
                 new CacheService());
         private string exampleTag = "gawr_gura";
 

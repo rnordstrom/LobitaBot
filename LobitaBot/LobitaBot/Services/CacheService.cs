@@ -23,6 +23,11 @@ namespace LobitaBot
             tagCache.Add(pd);
         }
 
+        public void SetCache(ICollection<PostData> pds)
+        {
+            tagCache = new ConcurrentBag<PostData>(pds);
+        }
+
         public void Clear()
         {
             tagCache.Clear();
@@ -30,7 +35,7 @@ namespace LobitaBot
 
         public bool IsEmpty()
         {
-            return tagCache.Count == 0 ? true : false;
+            return tagCache.Count == 0;
         }
 
         public bool CharacterAloneInCache(string tagName)

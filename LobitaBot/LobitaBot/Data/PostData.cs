@@ -19,7 +19,7 @@ namespace LobitaBot
         public string TagName { get; }
         public string SeriesName { get; }
         public string Link { get; }
-        public int PostIndex { get; }
+        public int PostIndex { get; set; }
         public int LinkId { get; }
         public AdditionalPostData AdditionalData { get; set; }
     };

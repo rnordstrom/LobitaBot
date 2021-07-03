@@ -10,7 +10,7 @@ namespace LobitaBot
         {
             XmlDocument doc = new XmlDocument();
 
-            doc.Load(Path.Join(Environment.GetEnvironmentVariable("CONFIG_LOCATION"), configDirectory, Constants.ConfigFile));
+            doc.Load(BuildPath(configDirectory));
 
             return doc
                 .SelectSingleNode("items")
@@ -18,16 +18,33 @@ namespace LobitaBot
                 .InnerText;
         }
 
-        public static int GetBatchQueryLimit(string configDirectory)
+        public static int GetBatchReadLimit(string configDirectory)
         {
             XmlDocument doc = new XmlDocument();
 
-            doc.Load(Path.Join(Environment.GetEnvironmentVariable("CONFIG_LOCATION"), configDirectory, Constants.ConfigFile));
+            doc.Load(BuildPath(configDirectory));
 
             return int.Parse(doc
                 .SelectSingleNode("items")
-                .SelectSingleNode("BatchQueryLimit")
+                .SelectSingleNode("BatchReadLimit")
                 .InnerText);
+        }
+
+        public static int GetPostLowerLimit(string configDirectory)
+        {
+            XmlDocument doc = new XmlDocument();
+
+            doc.Load(BuildPath(configDirectory));
+
+            return int.Parse(doc
+                .SelectSingleNode("items")
+                .SelectSingleNode("PostLowerLimit")
+                .InnerText);
+        }
+
+        private static string BuildPath(string configDirectory)
+        {
+            return Path.Join(Environment.GetEnvironmentVariable("CONFIG_LOCATION"), configDirectory, Constants.ConfigFile);
         }
     }
 }
