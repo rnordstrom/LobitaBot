@@ -1,132 +1,163 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LobitaBot
 {
     public abstract class DbIndex
     {
-        protected MySqlConnection Conn { get; }
-        protected CacheService _cacheService;
         protected int limit;
         protected const int TimeOut = 300;
+        string _dbName;
+        protected string connectionString;
 
-        protected DbIndex(string dbName, int batchLimit, CacheService cacheService)
+        protected DbIndex(string dbName)
         {
-            Conn = new MySqlConnection(
+            _dbName = dbName;
+        }
+
+        public MySqlConnection GetConnection()
+        {
+            MySqlConnection Conn = new MySqlConnection(
                 $"server={Environment.GetEnvironmentVariable("DB_HOST")};" +
                 $"user={Environment.GetEnvironmentVariable("DB_USER")};" +
-                $"database={dbName};port=3306;" +
+                $"database={_dbName};port=3306;" +
                 $"password={Environment.GetEnvironmentVariable("DB_PWD")};" +
                 $"Allow User Variables=true;" +
                 $"Ignore Prepare=false;");
-            limit = batchLimit;
-            _cacheService = cacheService;
+
+            Conn.Open();
+
+            return Conn;
         }
 
-        protected void PopulateCacheParallel(string postQuery, AdditionalPostData additionalData = null)
+        protected string BuildPostQuery(string baseQuery, string tagName, int linkId)
         {
-            _cacheService.CTS.Cancel();
+            return baseQuery.Replace("&", tagName).Replace("%", linkId.ToString());
+        }
 
-            try
-            {
-                _cacheService.CacheTask.Wait();
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-            }
+        protected int GetIndexForPostId(string tagName, int postId, MySqlConnection conn)
+        {
+            List<int> linkIds = GetLinkIdsForTag(tagName, conn);
 
-            _cacheService.Clear();
+            return linkIds.IndexOf(postId);
+        }
 
-            _cacheService.CTS = new CancellationTokenSource();
 
+        protected int GetNextLinkId(string tagName, int currentId, MySqlConnection conn)
+        {
+            List<int> linkIds = GetLinkIdsForTag(tagName, conn);
+            int idIndex = linkIds.IndexOf(currentId);
+            int nextIndex = idIndex == linkIds.Count - 1 ? idIndex : idIndex + 1;
+
+            return linkIds[nextIndex];
+        }
+
+        protected int GetPreviousLinkId(string tagName, int currentId, MySqlConnection conn)
+        {
+            List<int> linkIds = GetLinkIdsForTag(tagName, conn);
+            int idIndex = linkIds.IndexOf(currentId);
+            int previousIndex = idIndex == 0 ? idIndex : idIndex - 1;
+
+            return linkIds[previousIndex];
+        }
+
+        protected int GetRandomLinkIdForQuery(string postQuery, MySqlConnection conn)
+        {
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            PostData pd;
-            int i = 0;
-            string postQueryLimit = postQuery + $" LIMIT {limit}";
+            List<int> idList = new List<int>();
+            Random rand = new Random();
+            int index;
 
             try
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(postQueryLimit, Conn);
+                cmd = new MySqlCommand(postQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
 
-                while (rdr.Read())
+                using (rdr = cmd.ExecuteReader())
                 {
-                    pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], i++, (int)rdr[4]);
-
-                    if (additionalData != null)
+                    while (rdr.Read())
                     {
-                        pd.AdditionalData = additionalData;
+                        idList.Add((int)rdr[0]);
                     }
-
-                    _cacheService.Add(pd);
                 }
-
-                rdr.Close();
-
-                _cacheService.CacheTask = Task.Factory.StartNew(() => PopulateCacheParallel(postQueryLimit, i, _cacheService.CTS.Token, additionalData), TaskCreationOptions.LongRunning);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-
-                Conn.Close();
             }
+
+            index = rand.Next(0, idList.Count);
+
+            return idList.Count > 0 ? idList[index] : 0;
         }
 
-        private Task PopulateCacheParallel(string queryString, int index, CancellationToken token, AdditionalPostData additionalData)
+        protected List<int> GetLinkIdsForTag(string tagName, MySqlConnection conn)
         {
-            long offset = 0;
-            string postQueryOffset;
-            bool endReached = false;
+            tagName = TagParser.EscapeApostrophe(tagName);
+            string linkIdQuery = 
+                $"SELECT tl.link_id " +
+                $"FROM tags AS t, tag_links AS tl " +
+                $"WHERE t.id = tl.tag_id AND t.name = '{tagName}'";
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            PostData pd;
+            List<int> linkIds = new List<int>();
 
-            while (!endReached && !token.IsCancellationRequested)
+            try
             {
-                offset += limit;
-                postQueryOffset = queryString + $" OFFSET {offset}";
-
-                cmd = new MySqlCommand(postQueryOffset, Conn);
+                cmd = new MySqlCommand(linkIdQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
 
-                if (rdr.HasRows)
+                using (rdr = cmd.ExecuteReader())
                 {
                     while (rdr.Read())
                     {
-                        pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], index++, (int)rdr[4]);
-
-                        if (additionalData != null)
-                        {
-                            pd.AdditionalData = additionalData;
-                        }
-
-                        _cacheService.Add(pd);
+                        linkIds.Add((int)rdr[0]);
                     }
                 }
-                else
-                {
-                    endReached = true;
-                }
-
-                rdr.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
-            Conn.Close();
-
-            return Task.CompletedTask;
+            return linkIds;
         }
 
-        protected string LookupTagById(string tagQuery)
+        protected PostData GetPostForQuery(string postQuery, MySqlConnection conn)
+        {
+            MySqlCommand cmd;
+            MySqlDataReader rdr;
+            PostData pd = null;
+
+            try
+            {
+                cmd = new MySqlCommand(postQuery, conn);
+                cmd.CommandTimeout = TimeOut;
+
+                using (rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        pd = new PostData((int)rdr[0], (string)rdr[1], (string)rdr[2], (string)rdr[3], (int)rdr[4], (int)rdr[5]);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
+            }
+
+            if (pd != null)
+            {
+                pd.PostIndex = GetIndexForPostId(pd.TagName, pd.LinkId, conn);
+            }
+
+            return pd;
+        }
+
+        protected string LookupTagById(string tagQuery, MySqlConnection conn)
         {
             string tag = "";
             MySqlCommand cmd;
@@ -134,15 +165,15 @@ namespace LobitaBot
 
             try
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(tagQuery, Conn);
+                cmd = new MySqlCommand(tagQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
 
-                while (rdr.Read())
+                using (rdr = cmd.ExecuteReader())
                 {
-                    tag = (string)rdr[0];
+                    while (rdr.Read())
+                    {
+                        tag = (string)rdr[0];
+                    }
                 }
             }
             catch (Exception e)
@@ -150,12 +181,10 @@ namespace LobitaBot
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
-            Conn.Close();
-
             return tag;
         }
 
-        protected int LookupTagIdByName(string tagQuery)
+        protected int LookupTagIdByName(string tagQuery, MySqlConnection conn)
         {
             int id = -1;
             MySqlCommand cmd;
@@ -163,15 +192,15 @@ namespace LobitaBot
 
             try
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(tagQuery, Conn);
+                cmd = new MySqlCommand(tagQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
 
-                while (rdr.Read())
+                using (rdr = cmd.ExecuteReader())
                 {
-                    id = (int)rdr[0];
+                    while (rdr.Read())
+                    {
+                        id = (int)rdr[0];
+                    }
                 }
             }
             catch (Exception e)
@@ -179,12 +208,10 @@ namespace LobitaBot
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
-            Conn.Close();
-
             return id;
         }
 
-        protected List<TagData> LookupTagData(string dataQuery)
+        protected List<TagData> LookupTagData(string dataQuery, MySqlConnection conn)
         {
             List<TagData> tagData = new List<TagData>();
             MySqlCommand cmd;
@@ -192,15 +219,15 @@ namespace LobitaBot
 
             try
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(dataQuery, Conn);
+                cmd = new MySqlCommand(dataQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
 
-                while (rdr.Read())
+                using (rdr = cmd.ExecuteReader())
                 {
-                    tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (int)rdr[2]));
+                    while (rdr.Read())
+                    {
+                        tagData.Add(new TagData((string)rdr[0], (int)rdr[1], (int)rdr[2]));
+                    }
                 }
             }
             catch (Exception e)
@@ -208,12 +235,10 @@ namespace LobitaBot
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
-            Conn.Close();
-
             return tagData;
         }
 
-        protected List<string> LookupTags(string tagQuery)
+        protected List<string> LookupTags(string tagQuery, MySqlConnection conn)
         {
             List<string> tags = new List<string>();
             MySqlCommand cmd;
@@ -221,15 +246,15 @@ namespace LobitaBot
 
             try
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(tagQuery, Conn);
+                cmd = new MySqlCommand(tagQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
 
-                while (rdr.Read())
+                using (rdr = cmd.ExecuteReader())
                 {
-                    tags.Add((string)rdr[0]);
+                    while (rdr.Read())
+                    {
+                        tags.Add((string)rdr[0]);
+                    }
                 }
             }
             catch (Exception e)
@@ -237,12 +262,10 @@ namespace LobitaBot
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
-            Conn.Close();
-
             return tags;
         }
 
-        protected bool HasExactMatch(string tagQuery, out string matched)
+        protected bool HasExactMatch(string tagQuery, MySqlConnection conn, out string matched)
         {
             string tag = "";
             bool exists = false;
@@ -251,18 +274,18 @@ namespace LobitaBot
 
             try
             {
-                Conn.Open();
-
-                cmd = new MySqlCommand(tagQuery, Conn);
+                cmd = new MySqlCommand(tagQuery, conn);
                 cmd.CommandTimeout = TimeOut;
-                rdr = cmd.ExecuteReader();
                 int i = 0;
 
-                while (rdr.Read())
+                using (rdr = cmd.ExecuteReader())
                 {
-                    tag = (string)rdr[0];
+                    while (rdr.Read())
+                    {
+                        tag = (string)rdr[0];
 
-                    i++;
+                        i++;
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(tag) && i == 1)
@@ -274,8 +297,6 @@ namespace LobitaBot
             {
                 Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
-
-            Conn.Close();
 
             matched = tag;
 

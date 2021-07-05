@@ -4,14 +4,14 @@ namespace LobitaBot
 {
     public class PostData
     {
-        public PostData(int tagId, string tagName, string link, string seriesName, int postIndex, int linkId)
+        public PostData(int tagId, string tagName, string link, string seriesName, int linkId, int postCount)
         {
             TagId = tagId;
             TagName = tagName;
             LinkId = linkId;
             Link = link;
             SeriesName = seriesName;
-            PostIndex = postIndex;
+            PostCount = postCount;
             AdditionalData = null;
         }
 
@@ -19,8 +19,9 @@ namespace LobitaBot
         public string TagName { get; }
         public string SeriesName { get; }
         public string Link { get; }
-        public int PostIndex { get; }
         public int LinkId { get; }
+        public int PostCount { get; set; }
+        public int PostIndex { get; set; }
         public AdditionalPostData AdditionalData { get; set; }
     };
 }

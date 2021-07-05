@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +23,6 @@ namespace LobitaBot
     public class Search : ModuleBase<SocketCommandContext>
     {
         private PageService _pageService;
-        private CacheService _cacheService;
         private const string SuggestionTitle = "<Tag ID> Tag Name (#Posts)";
         private const string ExcessiveResults = "Your search for '%' is too broad! Please be more specific.";
         private const string NoResults = "No results found for '%'.";
@@ -39,12 +39,17 @@ namespace LobitaBot
         private const int MaxSearchResults = 10000;
         private const int MaxSequentialImages = 100;
         private const bool IsInline = false;
-        List<List<TagData>> pages;
+        private List<List<TagData>> pages;
+        private DbCharacterIndex _characterIndex;
+        private DbSeriesIndex _seriesIndex;
 
-        public Search(PageService ps, CacheService cs)
+        public Search(PageService ps)
         {
             _pageService = ps;
-            _cacheService = cs;
+            _characterIndex = new DbCharacterIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig));
+            _seriesIndex = new DbSeriesIndex(
+                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig));
         }
 
         [Command("character")]
@@ -52,12 +57,7 @@ namespace LobitaBot
             "Lists all alternatives if a conclusive match is not found.")]
         public async Task CharacterAsync(string charName = null)
         {
-            EmbedBuilder embedBuilder = 
-                SearchAsync(charName, CATEGORY.CHARACTER, 
-                    new DbCharacterIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+            EmbedBuilder embedBuilder = SearchAsync(charName, CATEGORY.CHARACTER, _characterIndex).Result;
             ulong msgId;
             PageData pageData;
 
@@ -71,12 +71,8 @@ namespace LobitaBot
                     await toSend.AddReactionAsync(Constants.RerollCharacter);
                     await toSend.AddReactionAsync(Constants.RerollSeries);
                     await toSend.AddReactionAsync(Constants.Characters);
-
-                    if (_cacheService.CacheSize() < MaxSequentialImages)
-                    {
-                        await toSend.AddReactionAsync(Constants.PreviousImage);
-                        await toSend.AddReactionAsync(Constants.NextImage);
-                    }
+                    await toSend.AddReactionAsync(Constants.PreviousImage);
+                    await toSend.AddReactionAsync(Constants.NextImage);
                 }
                 else
                 {
@@ -99,12 +95,7 @@ namespace LobitaBot
             "Lists all alternatives if a conclusive match is not found.")]
         public async Task SeriesAsync(string seriesName = null)
         {
-            EmbedBuilder embedBuilder 
-                = SearchAsync(seriesName, CATEGORY.SERIES, 
-                    new DbSeriesIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+            EmbedBuilder embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, _seriesIndex).Result;
             ulong msgId;
             PageData pageData;
 
@@ -152,71 +143,68 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex charIndex = 
-                new DbCharacterIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
-            DbSeriesIndex seriesIndex = 
-                new DbSeriesIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
-            int id;
-            string tag;
-            string charNameEscaped;
+            DbCharacterIndex charIndex = _characterIndex;
+            DbSeriesIndex seriesIndex = _seriesIndex;
 
-            if (int.TryParse(charName, out id))
+            using (MySqlConnection charConn = _characterIndex.GetConnection())
+            using (MySqlConnection seriesConn = _seriesIndex.GetConnection())
             {
-                tag = charIndex.LookupTagById(id);
+                int id;
+                string tag;
+                string charNameEscaped;
 
-                if (!string.IsNullOrEmpty(tag))
+                if (int.TryParse(charName, out id))
                 {
-                    charName = tag;
-                }
-            }
+                    tag = charIndex.LookupTagById(id, charConn);
 
-            charName = TagParser.Format(charName);
-            charNameEscaped = TagParser.EscapeUnderscore(charName);
-
-            string series = charIndex.SeriesWithCharacter(charName);
-            List<string> seriesList = new List<string>();
-
-            seriesList.Add(series);
-
-            if (!string.IsNullOrEmpty(series))
-            {
-                if (seriesList.Count < MaxSearchResults)
-                {
-                    List<TagData> seriesData = seriesIndex.LookupTagData(seriesList);
-
-                    pages = TagParser.CompileSuggestions(seriesData, EmbedBuilder.MaxFieldCount);
-
-                    EmbedBuilder embed = BuildSuggestionsEmbed(pages);
-
-                    if (embed != null)
+                    if (!string.IsNullOrEmpty(tag))
                     {
-                        var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-                        ulong msgId = toSend.Id;
-                        PageData pageData = new PageData(pages);
+                        charName = tag;
+                    }
+                }
 
-                        _pageService.AddLimited(msgId, pageData);
+                charName = TagParser.Format(charName);
+                charNameEscaped = TagParser.EscapeUnderscore(charName);
 
-                        await toSend.AddReactionAsync(Constants.PageBack);
-                        await toSend.AddReactionAsync(Constants.PageForward);
-                        await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                        await toSend.AddReactionAsync(Constants.SortNumerical);
-                        await toSend.AddReactionAsync(Constants.ChangeOrder);
+                string series = charIndex.SeriesWithCharacter(charName, charConn);
+                List<string> seriesList = new List<string>();
+
+                seriesList.Add(series);
+
+                if (!string.IsNullOrEmpty(series))
+                {
+                    if (seriesList.Count < MaxSearchResults)
+                    {
+                        List<TagData> seriesData = seriesIndex.LookupTagData(seriesList, seriesConn);
+
+                        pages = TagParser.CompileSuggestions(seriesData, EmbedBuilder.MaxFieldCount);
+
+                        EmbedBuilder embed = BuildSuggestionsEmbed(pages);
+
+                        if (embed != null)
+                        {
+                            var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
+                            ulong msgId = toSend.Id;
+                            PageData pageData = new PageData(pages);
+
+                            _pageService.AddLimited(msgId, pageData);
+
+                            await toSend.AddReactionAsync(Constants.PageBack);
+                            await toSend.AddReactionAsync(Constants.PageForward);
+                            await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                            await toSend.AddReactionAsync(Constants.SortNumerical);
+                            await toSend.AddReactionAsync(Constants.ChangeOrder);
+                        }
+                    }
+                    else
+                    {
+                        await ReplyAsync(ExcessiveResults.Replace("%", charNameEscaped));
                     }
                 }
                 else
                 {
-                    await ReplyAsync(ExcessiveResults.Replace("%", charNameEscaped));
+                    await ReplyAsync(NoResults.Replace("%", charNameEscaped));
                 }
-            }
-            else
-            {
-                await ReplyAsync(NoResults.Replace("%", charNameEscaped));
             }
         }
 
@@ -237,67 +225,65 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbSeriesIndex seriesIndex = 
-                new DbSeriesIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
-            DbCharacterIndex charIndex = new DbCharacterIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                _cacheService);
-            int id;
-            string tag;
-            string seriesNameEscaped;
+            DbSeriesIndex seriesIndex = _seriesIndex;
+            DbCharacterIndex charIndex = _characterIndex;
 
-            if (int.TryParse(seriesName, out id))
+            using (MySqlConnection charConn = _characterIndex.GetConnection())
+            using (MySqlConnection seriesConn = _seriesIndex.GetConnection())
             {
-                tag = seriesIndex.LookupTagById(id);
+                int id;
+                string tag;
+                string seriesNameEscaped;
 
-                if (!string.IsNullOrEmpty(tag))
+                if (int.TryParse(seriesName, out id))
                 {
-                    seriesName = tag;
-                }
-            }
+                    tag = seriesIndex.LookupTagById(id, seriesConn);
 
-            seriesName = TagParser.Format(seriesName);
-            seriesNameEscaped = TagParser.EscapeUnderscore(seriesName);
-
-            List<string> characters = seriesIndex.CharactersInSeries(seriesName);
-
-            if (characters.Count > 0)
-            {
-                if (characters.Count < MaxSearchResults)
-                {
-                    List<TagData> characterData = charIndex.LookupTagData(characters);
-
-                    pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
-
-                    EmbedBuilder embed = BuildSuggestionsEmbed(pages);
-
-                    if (embed != null)
+                    if (!string.IsNullOrEmpty(tag))
                     {
-                        var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-                        ulong msgId = toSend.Id;
-                        PageData pageData = new PageData(pages);
+                        seriesName = tag;
+                    }
+                }
 
-                        _pageService.AddLimited(msgId, pageData);
+                seriesName = TagParser.Format(seriesName);
+                seriesNameEscaped = TagParser.EscapeUnderscore(seriesName);
 
-                        await toSend.AddReactionAsync(Constants.PageBack);
-                        await toSend.AddReactionAsync(Constants.PageForward);
-                        await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                        await toSend.AddReactionAsync(Constants.SortNumerical);
-                        await toSend.AddReactionAsync(Constants.ChangeOrder);
+                List<string> characters = seriesIndex.CharactersInSeries(seriesName, seriesConn);
+
+                if (characters.Count > 0)
+                {
+                    if (characters.Count < MaxSearchResults)
+                    {
+                        List<TagData> characterData = charIndex.LookupTagData(characters, charConn);
+
+                        pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
+
+                        EmbedBuilder embed = BuildSuggestionsEmbed(pages);
+
+                        if (embed != null)
+                        {
+                            var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
+                            ulong msgId = toSend.Id;
+                            PageData pageData = new PageData(pages);
+
+                            _pageService.AddLimited(msgId, pageData);
+
+                            await toSend.AddReactionAsync(Constants.PageBack);
+                            await toSend.AddReactionAsync(Constants.PageForward);
+                            await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                            await toSend.AddReactionAsync(Constants.SortNumerical);
+                            await toSend.AddReactionAsync(Constants.ChangeOrder);
+                        }
+                    }
+                    else
+                    {
+                        await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
                     }
                 }
                 else
                 {
-                    await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
+                    await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
                 }
-            }
-            else
-            {
-                await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
             }
         }
 
@@ -333,12 +319,8 @@ namespace LobitaBot
                 {
                     await toSend.AddReactionAsync(Constants.RerollCollab);
                     await toSend.AddReactionAsync(Constants.Characters);
-
-                    if (_cacheService.CacheSize() < MaxSequentialImages)
-                    {
-                        await toSend.AddReactionAsync(Constants.PreviousImage);
-                        await toSend.AddReactionAsync(Constants.NextImage);
-                    }
+                    await toSend.AddReactionAsync(Constants.PreviousImage);
+                    await toSend.AddReactionAsync(Constants.NextImage);
                 }
                 else
                 {
@@ -356,7 +338,7 @@ namespace LobitaBot
             }
         }
 
-        private async Task<EmbedBuilder> SearchCollabAsync(string[] searchTerms, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
+        private async Task<EmbedBuilder> SearchCollabAsync(string[] searchTerms, int postId = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
         {
             if (!_pageService.HandlerAdded)
             {
@@ -391,98 +373,95 @@ namespace LobitaBot
                 }
             }
 
-            DbCharacterIndex charIndex = new DbCharacterIndex(
-                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                _cacheService);
+            DbCharacterIndex charIndex = _characterIndex;
 
-            int id;
-            string tag;
-            string matchedName;
-
-            for (int i = 0; i < searchTerms.Length; i++)
+            using (MySqlConnection charConn = _characterIndex.GetConnection())
             {
-                if (int.TryParse(searchTerms[i], out id))
-                {
-                    tag = charIndex.LookupTagById(id);
+                int id;
+                string tag;
+                string matchedName;
 
-                    if (!string.IsNullOrEmpty(tag))
+                for (int i = 0; i < searchTerms.Length; i++)
+                {
+                    if (int.TryParse(searchTerms[i], out id))
                     {
-                        searchTerms[i] = tag;
+                        tag = charIndex.LookupTagById(id, charConn);
+
+                        if (!string.IsNullOrEmpty(tag))
+                        {
+                            searchTerms[i] = tag;
+                        }
+                    }
+
+                    searchTerms[i] = TagParser.Format(searchTerms[i]);
+
+                    if (!charIndex.HasExactMatch(searchTerms[i], charConn, out matchedName))
+                    {
+                        await ReplyAsync($"Character name '{TagParser.EscapeUnderscore(searchTerms[i])}' could not be found.");
+
+                        return null;
+                    }
+                    else
+                    {
+                        searchTerms[i] = matchedName;
                     }
                 }
 
-                searchTerms[i] = TagParser.Format(searchTerms[i]);
+                EmbedBuilder embed;
 
-                if (!charIndex.HasExactMatch(searchTerms[i], out matchedName))
+                if (wildcardLastArg)
                 {
-                    await ReplyAsync($"Character name '{TagParser.EscapeUnderscore(searchTerms[i])}' could not be found.");
+                    List<string> furtherCollabs = charIndex.CollabsWithCharacters(searchTerms, charConn);
 
-                    return null;
+                    if (furtherCollabs.Count == 0)
+                    {
+                        await ReplyAsync($"No further collabs with the specified character(s) exist.");
+
+                        return null;
+                    }
+
+                    List<TagData> tagData = charIndex.LookupTagData(furtherCollabs, charConn);
+
+                    pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+                    embed = BuildSuggestionsEmbed(pages);
                 }
                 else
                 {
-                    searchTerms[i] = matchedName;
-                }
-            }
+                    PostData postData = null;
 
-            EmbedBuilder embed;
+                    switch (rollSequence)
+                    {
+                        case ROLL_SEQUENCE.RANDOM:
+                            postData = charIndex.LookupRandomCollab(searchTerms, charConn);
+                            break;
+                        case ROLL_SEQUENCE.PREVIOUS:
+                            postData = charIndex.LookupPreviousCollab(searchTerms, postId, charConn);
+                            break;
+                        case ROLL_SEQUENCE.NEXT:
+                            postData = charIndex.LookupNextCollab(searchTerms, postId, charConn);
+                            break;
+                    }
 
-            if (wildcardLastArg)
-            {
-                List<string> furtherCollabs = charIndex.CollabsWithCharacters(searchTerms);
+                    string embedDescription = rerollCollabDescription + "." +
+                        Environment.NewLine +
+                        listCharactersDescription + ".";
 
-                if (furtherCollabs.Count == 0)
-                {
-                    await ReplyAsync($"No further collabs with the specified character(s) exist.");
-
-                    return null;
-                }
-
-                List<TagData> tagData = charIndex.LookupTagData(furtherCollabs);
-
-                pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
-                embed = BuildSuggestionsEmbed(pages);
-            }
-            else
-            {
-                PostData postData = null;
-
-                switch (rollSequence)
-                {
-                    case ROLL_SEQUENCE.RANDOM:
-                        postData = charIndex.LookupRandomCollab(searchTerms);
-                        break;
-                    case ROLL_SEQUENCE.PREVIOUS:
-                        postData = charIndex.LookupPreviousCollab(searchTerms, postIndex);
-                        break;
-                    case ROLL_SEQUENCE.NEXT:
-                        postData = charIndex.LookupNextCollab(searchTerms, postIndex);
-                        break;
-                }
-
-                string embedDescription = rerollCollabDescription + "." +
-                    Environment.NewLine +
-                    listCharactersDescription + ".";
-
-                if (_cacheService.CacheSize() < MaxSequentialImages)
-                {
                     embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
+
+                    if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                    {
+                        embed = BuildImageEmbed(postData, embedDescription);
+                    }
+                    else
+                    {
+                        await ReplyAsync($"No images found for this collab.");
+
+                        return null;
+                    }
                 }
 
-                if (postData != null && !string.IsNullOrEmpty(postData.Link))
-                {
-                    embed = BuildImageEmbed(postData, embedDescription);
-                }
-                else
-                {
-                    await ReplyAsync($"No images found for this collab.");
-
-                    return null;
-                }
+                return embed;
             }
-
-            return embed;
         }
 
         private async Task<EmbedBuilder> SearchAsync(string searchTerm, CATEGORY category, ITagIndex tagIndex, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
@@ -526,81 +505,81 @@ namespace LobitaBot
                 Environment.NewLine +
                 listCharactersDescription +".";
 
-            if (int.TryParse(searchTerm, out id))
+            using (MySqlConnection conn = tagIndex.GetConnection())
             {
-                tag = tagIndex.LookupTagById(id);
-
-                if (!string.IsNullOrEmpty(tag))
+                if (int.TryParse(searchTerm, out id))
                 {
-                    searchTerm = tag;
-                }
-            }
+                    tag = tagIndex.LookupTagById(id, conn);
 
-            searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
-
-            if (tagIndex.HasExactMatch(searchTerm, out searchTermMatched))
-            {
-                switch (rollSequence)
-                {
-                    case ROLL_SEQUENCE.RANDOM:
-                        postData = tagIndex.LookupRandomPost(searchTermMatched);
-                        break;
-                    case ROLL_SEQUENCE.PREVIOUS:
-                        postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex);
-                        break;
-                    case ROLL_SEQUENCE.NEXT:
-                        postData = tagIndex.LookupNextPost(searchTermMatched, postIndex);
-                        break;
-                }
-
-                switch (category)
-                {
-                    case CATEGORY.CHARACTER:
-                        if (_cacheService.CacheSize() < MaxSequentialImages)
-                        {
-                            embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-                        }
-                        break;
-                }
-
-                if (postData != null && !string.IsNullOrEmpty(postData.Link))
-                {
-                    embed = BuildImageEmbed(postData, embedDescription);
-                }
-                else
-                {
-                    await ReplyAsync(NoImages.Replace("%", searchTermEscaped));
-
-                    return null;
-                }
-            }
-            else
-            {
-                embed = new EmbedBuilder();
-                tags = tagIndex.LookupTags(searchTerm);
-
-                if (tags.Count > 0)
-                {
-                    if (tags.Count > MaxSearchResults)
+                    if (!string.IsNullOrEmpty(tag))
                     {
-                        await ReplyAsync(ExcessiveResults.Replace("%", searchTerm));
+                        searchTerm = tag;
+                    }
+                }
+
+                searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
+
+                if (tagIndex.HasExactMatch(searchTerm, conn, out searchTermMatched))
+                {
+                    switch (rollSequence)
+                    {
+                        case ROLL_SEQUENCE.RANDOM:
+                            postData = tagIndex.LookupRandomPost(searchTermMatched, conn);
+                            break;
+                        case ROLL_SEQUENCE.PREVIOUS:
+                            postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex, conn);
+                            break;
+                        case ROLL_SEQUENCE.NEXT:
+                            postData = tagIndex.LookupNextPost(searchTermMatched, postIndex, conn);
+                            break;
+                    }
+
+                    switch (category)
+                    {
+                        case CATEGORY.CHARACTER:
+                            embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
+                            break;
+                    }
+
+                    if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                    {
+                        embed = BuildImageEmbed(postData, embedDescription);
+                    }
+                    else
+                    {
+                        await ReplyAsync(NoImages.Replace("%", searchTermEscaped));
 
                         return null;
                     }
-
-                    tagData = tagIndex.LookupTagData(tags);
-                    pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
-                    embed = BuildSuggestionsEmbed(pages);
                 }
                 else
                 {
-                    await ReplyAsync(NoResults.Replace("%", searchTermEscaped));
+                    embed = new EmbedBuilder();
+                    tags = tagIndex.LookupTags(searchTerm, conn);
 
-                    return null;
+                    if (tags.Count > 0)
+                    {
+                        if (tags.Count > MaxSearchResults)
+                        {
+                            await ReplyAsync(ExcessiveResults.Replace("%", searchTerm));
+
+                            return null;
+                        }
+
+                        tagData = tagIndex.LookupTagData(tags, conn);
+                        pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+                        embed = BuildSuggestionsEmbed(pages);
+                    }
+                    else
+                    {
+                        await ReplyAsync(NoResults.Replace("%", searchTermEscaped));
+
+                        return null;
+                    }
                 }
-            }
 
-            return embed;
+                return embed;
+            }
         }
 
         private async Task<EmbedBuilder> RandomPostAsync()
@@ -611,42 +590,42 @@ namespace LobitaBot
                 _pageService.HandlerAdded = true;
             }
 
-            DbCharacterIndex characterIndex = 
-                new DbCharacterIndex(
-                    ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                    ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                    _cacheService);
-            EmbedBuilder embed;
-            PostData postData;
-            string tag = characterIndex.LookupRandomTag();
-            string title;
+            DbCharacterIndex characterIndex = _characterIndex;
 
-            if (!string.IsNullOrEmpty(tag))
+            using (MySqlConnection conn = _characterIndex.GetConnection())
             {
-                title = TagParser.BuildTitle(tag);
-                postData = characterIndex.LookupRandomPost(tag);
+                EmbedBuilder embed;
+                PostData postData;
+                string tag = characterIndex.LookupRandomTag(conn);
+                string title;
 
-                while (postData == null)
+                if (!string.IsNullOrEmpty(tag))
                 {
-                    tag = characterIndex.LookupRandomTag();
                     title = TagParser.BuildTitle(tag);
-                    postData = characterIndex.LookupRandomPost(tag);
+                    postData = characterIndex.LookupRandomPost(tag, conn);
+
+                    while (postData == null)
+                    {
+                        tag = characterIndex.LookupRandomTag(conn);
+                        title = TagParser.BuildTitle(tag);
+                        postData = characterIndex.LookupRandomPost(tag, conn);
+                    }
+
+                    string embedDescription = rerollRandomDescription + "." +
+                        Environment.NewLine +
+                        listCharactersDescription + ".";
+
+                    embed = BuildImageEmbed(postData, embedDescription);
+                }
+                else
+                {
+                    await ReplyAsync("An error occurred during random tag lookup.");
+
+                    return null;
                 }
 
-                string embedDescription =  rerollRandomDescription + "." +
-                    Environment.NewLine +
-                    listCharactersDescription + ".";
-
-                embed = BuildImageEmbed(postData, embedDescription);
+                return embed;
             }
-            else
-            {
-                await ReplyAsync("An error occurred during random tag lookup.");
-
-                return null;
-            }
-
-            return embed;
         }
 
         private EmbedBuilder BuildImageEmbed(PostData postData, string embedDescription)
@@ -690,7 +669,7 @@ namespace LobitaBot
                             .WithImageUrl(postData.Link)
                             .WithUrl(postData.Link)
                             .WithAuthor(Context.Client.CurrentUser)
-                            .WithFooter($"Image {postData.PostIndex + 1} of {_cacheService.CacheSize()}")
+                            .WithFooter($"Image {postData.PostIndex + 1} of {postData.PostCount}")
                             .WithColor(Color.DarkGrey)
                             .WithCurrentTimestamp();
         }
@@ -741,6 +720,7 @@ namespace LobitaBot
             int imageIndex = 0;
             int numImages = 0;
             string characterId;
+            int postId;
             string seriesName;
             EmbedBuilder embedBuilder;
             Embed embed;
@@ -750,11 +730,7 @@ namespace LobitaBot
             if (reaction.Emote.Name == Constants.RerollCharacter.Name)
             {
                 characterId = embedFields[0].Value;
-                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, 
-                    new DbCharacterIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+                embedBuilder = SearchAsync(characterId, CATEGORY.CHARACTER, _characterIndex).Result;
 
                 if (embedBuilder != null)
                 {
@@ -767,22 +743,15 @@ namespace LobitaBot
                         await toSend.AddReactionAsync(Constants.RerollSeries);
                         await toSend.AddReactionAsync(Constants.Characters);
 
-                        if (_cacheService.CacheSize() < MaxSequentialImages)
-                        {
-                            await toSend.AddReactionAsync(Constants.PreviousImage);
-                            await toSend.AddReactionAsync(Constants.NextImage);
-                        }
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
                     }
                 }
             }
             else if (reaction.Emote.Name == Constants.RerollSeries.Name)
             {
                 seriesName = TagParser.Format(embedFields[2].Value);
-                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, 
-                    new DbSeriesIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                        _cacheService)).Result;
+                embedBuilder = SearchAsync(seriesName, CATEGORY.SERIES, _seriesIndex).Result;
 
                 if (embedBuilder != null)
                 {
@@ -811,18 +780,15 @@ namespace LobitaBot
                     {
                         await toSend.AddReactionAsync(Constants.RerollCollab);
                         await toSend.AddReactionAsync(Constants.Characters);
-
-                        if (_cacheService.CacheSize() < MaxSequentialImages)
-                        {
-                            await toSend.AddReactionAsync(Constants.PreviousImage);
-                            await toSend.AddReactionAsync(Constants.NextImage);
-                        }
+                        await toSend.AddReactionAsync(Constants.PreviousImage);
+                        await toSend.AddReactionAsync(Constants.NextImage);
                     }
                 }
             }
             else if (reaction.Emote.Name == Constants.PreviousImage.Name)
             {
                 characterId = embedFields[0].Value;
+                postId = int.Parse(embedFields[1].Value);
                 footerText.Split(" ").First(i => int.TryParse(i, out imageIndex));
                 footerText.Split(" ").Last(i => int.TryParse(i, out numImages));
 
@@ -830,7 +796,7 @@ namespace LobitaBot
                 {
                     if (characterId.Contains(", "))
                     {
-                        embedBuilder = SearchCollabAsync(characterId.Split(", "), imageIndex - 1, ROLL_SEQUENCE.PREVIOUS).Result;
+                        embedBuilder = SearchCollabAsync(characterId.Split(", "), postId, ROLL_SEQUENCE.PREVIOUS).Result;
 
                         if (embedBuilder != null)
                         {
@@ -842,11 +808,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollCollab);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -855,11 +818,8 @@ namespace LobitaBot
                         embedBuilder = SearchAsync(
                             characterId,
                             CATEGORY.CHARACTER,
-                            new DbCharacterIndex(
-                                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                                _cacheService),
-                            imageIndex - 1,
+                            _characterIndex,
+                            postId,
                             ROLL_SEQUENCE.PREVIOUS).Result;
 
                         if (embedBuilder != null)
@@ -873,11 +833,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollSeries);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -886,6 +843,7 @@ namespace LobitaBot
             else if (reaction.Emote.Name == Constants.NextImage.Name)
             {
                 characterId = embedFields[0].Value;
+                postId = int.Parse(embedFields[1].Value);
                 footerText.Split(" ").First(i => int.TryParse(i, out imageIndex));
                 footerText.Split(" ").Last(i => int.TryParse(i, out numImages));
 
@@ -893,7 +851,7 @@ namespace LobitaBot
                 {
                     if (characterId.Contains(", "))
                     {
-                        embedBuilder = SearchCollabAsync(characterId.Split(", "), imageIndex - 1, ROLL_SEQUENCE.NEXT).Result;
+                        embedBuilder = SearchCollabAsync(characterId.Split(", "), postId, ROLL_SEQUENCE.NEXT).Result;
 
                         if (embedBuilder != null)
                         {
@@ -905,11 +863,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollCollab);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -918,11 +873,8 @@ namespace LobitaBot
                         embedBuilder = SearchAsync(
                             characterId,
                             CATEGORY.CHARACTER,
-                            new DbCharacterIndex(
-                                ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                                ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), 
-                                _cacheService),
-                            imageIndex - 1,
+                            _characterIndex,
+                            postId,
                             ROLL_SEQUENCE.NEXT).Result;
 
                         if (embedBuilder != null)
@@ -936,11 +888,8 @@ namespace LobitaBot
                                 await toSend.AddReactionAsync(Constants.RerollSeries);
                                 await toSend.AddReactionAsync(Constants.Characters);
 
-                                if (_cacheService.CacheSize() < MaxSequentialImages)
-                                {
-                                    await toSend.AddReactionAsync(Constants.PreviousImage);
-                                    await toSend.AddReactionAsync(Constants.NextImage);
-                                }
+                                await toSend.AddReactionAsync(Constants.PreviousImage);
+                                await toSend.AddReactionAsync(Constants.NextImage);
                             }
                         }
                     }
@@ -948,27 +897,28 @@ namespace LobitaBot
             }
             else if (reaction.Emote.Name == Constants.Characters.Name)
             {
-                DbCharacterIndex charIndex = 
-                    new DbCharacterIndex(
-                        ConfigUtils.GetCurrentDatabase(Constants.ProductionConfig), 
-                        ConfigUtils.GetBatchQueryLimit(Constants.ProductionConfig), _cacheService);
-                List<string> charsInPost = charIndex.CharactersInPost(int.Parse(embedFields[1].Value));
-                List<TagData> charData = charIndex.LookupTagData(charsInPost);
+                DbCharacterIndex charIndex = _characterIndex;
 
-                pages = TagParser.CompileSuggestions(charData, EmbedBuilder.MaxFieldCount);
-                pageData = new PageData(pages);
+                using (MySqlConnection conn = _characterIndex.GetConnection())
+                {
+                    List<string> charsInPost = charIndex.CharactersInPost(int.Parse(embedFields[1].Value), conn);
+                    List<TagData> charData = charIndex.LookupTagData(charsInPost, conn);
 
-                embedBuilder = BuildSuggestionsEmbed(pages);
-                var toSend = await channel.SendMessageAsync(embed: embedBuilder.Build());
-                ulong msgId = toSend.Id;
+                    pages = TagParser.CompileSuggestions(charData, EmbedBuilder.MaxFieldCount);
+                    pageData = new PageData(pages);
 
-                _pageService.AddLimited(msgId, pageData);
+                    embedBuilder = BuildSuggestionsEmbed(pages);
+                    var toSend = await channel.SendMessageAsync(embed: embedBuilder.Build());
+                    ulong msgId = toSend.Id;
 
-                await toSend.AddReactionAsync(Constants.PageBack);
-                await toSend.AddReactionAsync(Constants.PageForward);
-                await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                await toSend.AddReactionAsync(Constants.SortNumerical);
-                await toSend.AddReactionAsync(Constants.ChangeOrder);
+                    _pageService.AddLimited(msgId, pageData);
+
+                    await toSend.AddReactionAsync(Constants.PageBack);
+                    await toSend.AddReactionAsync(Constants.PageForward);
+                    await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
+                    await toSend.AddReactionAsync(Constants.ChangeOrder);
+                }
 
             }
             else if (reaction.Emote.Name == Constants.RerollRandom.Name)
