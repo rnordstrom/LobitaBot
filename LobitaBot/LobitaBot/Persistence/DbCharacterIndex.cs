@@ -15,81 +15,82 @@ namespace LobitaBot
 
         public DbCharacterIndex(string dbName) : base(dbName) { }
 
-        public PostData LookupRandomPost(string searchTerm)
+        public PostData LookupRandomPost(string searchTerm, MySqlConnection conn)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
             string linkIdQuery =
                 $"SELECT tl.link_id " +
                 $"FROM tags AS t, tag_links AS tl " +
                 $"WHERE t.id = tl.tag_id AND t.name = '{searchTerm}'";
+            int randomId = GetRandomLinkIdForQuery(linkIdQuery, conn);
 
-            return GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, GetRandomLinkIdForQuery(linkIdQuery)));
+            return GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, randomId), conn);
         }
 
-        public PostData LookupNextPost(string searchTerm, int postId)
+        public PostData LookupNextPost(string searchTerm, int postId, MySqlConnection conn)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            int nextLinkId = GetNextLinkId(searchTerm, postId);
-            PostData pd = GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, nextLinkId));
+            int nextLinkId = GetNextLinkId(searchTerm, postId, conn);
+            PostData pd = GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, nextLinkId), conn);
 
-            pd.PostIndex = GetIndexForPostId(searchTerm, nextLinkId);
+            pd.PostIndex = GetIndexForPostId(searchTerm, nextLinkId, conn);
 
             return pd;
         }
 
-        public PostData LookupPreviousPost(string searchTerm, int postId)
+        public PostData LookupPreviousPost(string searchTerm, int postId, MySqlConnection conn)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
-            int previousLinkId = GetPreviousLinkId(searchTerm, postId);
-            PostData pd = GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, previousLinkId));
+            int previousLinkId = GetPreviousLinkId(searchTerm, postId, conn);
+            PostData pd = GetPostForQuery(BuildPostQuery(_postQuery, searchTerm, previousLinkId), conn);
 
-            pd.PostIndex = GetIndexForPostId(searchTerm, previousLinkId);
+            pd.PostIndex = GetIndexForPostId(searchTerm, previousLinkId, conn);
 
             return pd;
         }
 
-        public PostData LookupRandomCollab(string[] searchTerms)
+        public PostData LookupRandomCollab(string[] searchTerms, MySqlConnection conn)
         {
-            PostData postData = GetRandomCollabPost(searchTerms);
+            PostData postData = GetRandomCollabPost(searchTerms, conn);
 
             return postData;
         }
 
-        public PostData LookupPreviousCollab(string[] searchTerms, int postId)
+        public PostData LookupPreviousCollab(string[] searchTerms, int postId, MySqlConnection conn)
         {
-            GetRandomCollabPost(searchTerms);
+            GetRandomCollabPost(searchTerms, conn);
 
-            PostData postData = PreviousCollabPost(searchTerms, postId);
+            PostData postData = PreviousCollabPost(searchTerms, postId, conn);
 
             return postData;
         }
 
-        public PostData LookupNextCollab(string[] searchTerms, int postId)
+        public PostData LookupNextCollab(string[] searchTerms, int postId, MySqlConnection conn)
         {
-            GetRandomCollabPost(searchTerms);
+            GetRandomCollabPost(searchTerms, conn);
 
-            PostData postData = NextCollabPost(searchTerms, postId);
+            PostData postData = NextCollabPost(searchTerms, postId, conn);
 
             return postData;
         }
 
-        public string LookupTagById(int id)
+        public string LookupTagById(int id, MySqlConnection conn)
         {
             string tagQuery = $"SELECT name from tags WHERE id = '{id}'";
 
-            return LookupTagById(tagQuery);
+            return LookupTagById(tagQuery, conn);
         }
 
-        public new int LookupTagIdByName(string tagName)
+        public new int LookupTagIdByName(string tagName, MySqlConnection conn)
         {
             tagName = TagParser.EscapeApostrophe(tagName);
 
             string tagQuery = $"SELECT id from tags WHERE name = '{tagName}'";
 
-            return base.LookupTagIdByName(tagQuery);
+            return base.LookupTagIdByName(tagQuery, conn);
         }
 
-        public List<TagData> LookupTagData(List<string> tags)
+        public List<TagData> LookupTagData(List<string> tags, MySqlConnection conn)
         {
             string escaped;
             string dataQuery;
@@ -112,28 +113,28 @@ namespace LobitaBot
 
             dataQuery = $"SELECT name, id, post_count FROM tags WHERE name IN ({sb})";
 
-            return LookupTagData(dataQuery);
+            return LookupTagData(dataQuery, conn);
         }
 
-        public new List<string> LookupTags(string searchTerm)
+        public new List<string> LookupTags(string searchTerm, MySqlConnection conn)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
             string tagQuery = $"SELECT name from tags WHERE name LIKE '{searchTerm}'";
 
-            return base.LookupTags(tagQuery);
+            return base.LookupTags(tagQuery, conn);
         }
 
-        public new bool HasExactMatch(string searchTerm, out string matched)
+        public new bool HasExactMatch(string searchTerm, MySqlConnection conn, out string matched)
         {
             searchTerm = TagParser.EscapeApostrophe(searchTerm);
 
             string tagQuery = $"SELECT name from tags WHERE name LIKE '{searchTerm}'";
 
-            return base.HasExactMatch(tagQuery, out matched);
+            return base.HasExactMatch(tagQuery, conn, out matched);
         }
 
-        public string LookupRandomTag()
+        public string LookupRandomTag(MySqlConnection conn)
         {
             string randQuery = $"SELECT id FROM tags ORDER BY RAND() LIMIT 1";
             MySqlCommand cmd;
@@ -141,35 +142,32 @@ namespace LobitaBot
             int id = 0;
             string tag = "";
 
-            using (MySqlConnection Conn = Connect())
+            try
             {
-                try
-                {
-                    cmd = new MySqlCommand(randQuery, Conn);
+                cmd = new MySqlCommand(randQuery, conn);
 
-                    using (rdr = cmd.ExecuteReader())
+                using (rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
                     {
-                        while (rdr.Read())
-                        {
-                            id = (int)rdr[0];
-                        }
+                        id = (int)rdr[0];
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
             if (id > 0)
             {
-                tag = LookupTagById(id);
+                tag = LookupTagById(id, conn);
             }
 
             return tag;
         }
 
-        public string SeriesWithCharacter(string charName)
+        public string SeriesWithCharacter(string charName, MySqlConnection conn)
         {
             MySqlCommand cmd;
             MySqlDataReader rdr;
@@ -183,30 +181,27 @@ namespace LobitaBot
 
             string series = "";
 
-            using (MySqlConnection Conn = Connect())
+            try
             {
-                try
-                {
-                    cmd = new MySqlCommand(seriesQuery, Conn);
+                cmd = new MySqlCommand(seriesQuery, conn);
 
-                    using (rdr = cmd.ExecuteReader())
+                using (rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
                     {
-                        while (rdr.Read())
-                        {
-                            series = (string)rdr[0];
-                        }
+                        series = (string)rdr[0];
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
             return series;
         }
 
-        public List<string> CharactersInPost(int postId)
+        public List<string> CharactersInPost(int postId, MySqlConnection conn)
         {
             MySqlCommand cmd;
             MySqlDataReader rdr;
@@ -218,62 +213,56 @@ namespace LobitaBot
 
             List<string> characters = new List<string>();
 
-            using (MySqlConnection Conn = Connect())
+            try
             {
-                try
-                {
-                    cmd = new MySqlCommand(postQuery, Conn);
+                cmd = new MySqlCommand(postQuery, conn);
 
-                    using (rdr = cmd.ExecuteReader())
+                using (rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
                     {
-                        while (rdr.Read())
-                        {
-                            characters.Add((string)rdr[0]);
-                        }
+                        characters.Add((string)rdr[0]);
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
             return characters;
         }
 
-        public List<string> CollabsWithCharacters(string[] searchTerms)
+        public List<string> CollabsWithCharacters(string[] searchTerms, MySqlConnection conn)
         {
             MySqlCommand cmd;
             MySqlDataReader rdr;
-            ICollection<int> commonLinkIds = GetCommonLinkIds(searchTerms);
+            ICollection<int> commonLinkIds = GetCommonLinkIds(searchTerms, conn);
             string linkIdsString = ToCommaSeparatedString(commonLinkIds);
 
             string suggestionsQuery =
                 $"SELECT DISTINCT t.name " +
-                $"FROM tags AS t, tag_links AS tl, links AS l " +
-                $"WHERE t.id = tl.tag_id AND l.id = tl.link_id AND l.id IN ({linkIdsString})";
+                $"FROM tags AS t, tag_links AS tl " +
+                $"WHERE t.id = tl.tag_id AND tl.link_id IN ({linkIdsString})";
 
             List<string> characters = new List<string>();
 
-            using (MySqlConnection Conn = Connect())
+            try
             {
-                try
-                {
-                    cmd = new MySqlCommand(suggestionsQuery, Conn);
-                    cmd.CommandTimeout = TimeOut;
+                cmd = new MySqlCommand(suggestionsQuery, conn);
+                cmd.CommandTimeout = TimeOut;
 
-                    using (rdr = cmd.ExecuteReader())
+                using (rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
                     {
-                        while (rdr.Read())
-                        {
-                            characters.Add((string)rdr[0]);
-                        }
+                        characters.Add((string)rdr[0]);
                     }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message + Environment.NewLine + e.StackTrace);
             }
 
             foreach (string s in searchTerms)
@@ -289,26 +278,26 @@ namespace LobitaBot
 
         
 
-        private PostData GetRandomCollabPost(string[] searchTerms)
+        private PostData GetRandomCollabPost(string[] searchTerms, MySqlConnection conn)
         {
-            PostData pd = RandomCollabPost(searchTerms);
-            AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
+            PostData pd = RandomCollabPost(searchTerms, conn);
+            AdditionalPostData apd = BuildAdditionalPostData(searchTerms, conn);
 
             pd.AdditionalData = apd;
 
             return pd;
         }
 
-        private PostData RandomCollabPost(string[] searchTerms)
+        private PostData RandomCollabPost(string[] searchTerms, MySqlConnection conn)
         {
             Random rand = new Random();
-            List<int> commonLinkIds = GetCommonLinkIds(searchTerms).ToList();
+            List<int> commonLinkIds = GetCommonLinkIds(searchTerms, conn).ToList();
             commonLinkIds.Sort();
             string searchTermEscaped = TagParser.EscapeApostrophe(searchTerms[0]);
             int randomId = commonLinkIds[rand.Next(0, commonLinkIds.Count())];
             string postQuery = BuildPostQuery(_postQuery, searchTermEscaped, randomId);
 
-            PostData pd = GetPostForQuery(postQuery);
+            PostData pd = GetPostForQuery(postQuery, conn);
 
             pd.PostIndex = commonLinkIds.IndexOf(randomId);
             pd.PostCount = commonLinkIds.Count();
@@ -316,16 +305,16 @@ namespace LobitaBot
             return pd;
         }
 
-        private PostData NextCollabPost(string[] searchTerms, int currentId)
+        private PostData NextCollabPost(string[] searchTerms, int currentId, MySqlConnection conn)
         {
-            List<int> commonLinkIds = GetCommonLinkIds(searchTerms).ToList();
+            List<int> commonLinkIds = GetCommonLinkIds(searchTerms, conn).ToList();
             commonLinkIds.Sort();
             int idIndex = commonLinkIds.IndexOf(currentId);
             int nextIndex = idIndex == commonLinkIds.Count() - 1 ? idIndex : idIndex + 1;
             string postQuery = BuildPostQuery(_postQuery, TagParser.EscapeApostrophe(searchTerms[0]), commonLinkIds[nextIndex]);
 
-            PostData pd = GetPostForQuery(postQuery);
-            AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
+            PostData pd = GetPostForQuery(postQuery, conn);
+            AdditionalPostData apd = BuildAdditionalPostData(searchTerms, conn);
 
             pd.PostIndex = nextIndex;
             pd.PostCount = commonLinkIds.Count();
@@ -334,16 +323,16 @@ namespace LobitaBot
             return pd;
         }
 
-        private PostData PreviousCollabPost(string[] searchTerms, int currentId)
+        private PostData PreviousCollabPost(string[] searchTerms, int currentId, MySqlConnection conn)
         {
-            List<int> commonLinkIds = GetCommonLinkIds(searchTerms).ToList();
+            List<int> commonLinkIds = GetCommonLinkIds(searchTerms, conn).ToList();
             commonLinkIds.Sort();
             int idIndex = commonLinkIds.IndexOf(currentId);
             int previousIndex = idIndex == 0 ? idIndex : idIndex - 1;
             string postQuery = BuildPostQuery(_postQuery, TagParser.EscapeApostrophe(searchTerms[0]), commonLinkIds[previousIndex]);
 
-            PostData pd = GetPostForQuery(postQuery);
-            AdditionalPostData apd = BuildAdditionalPostData(searchTerms);
+            PostData pd = GetPostForQuery(postQuery, conn);
+            AdditionalPostData apd = BuildAdditionalPostData(searchTerms, conn);
 
             pd.PostIndex = previousIndex;
             pd.PostCount = commonLinkIds.Count();
@@ -352,19 +341,19 @@ namespace LobitaBot
             return pd;
         }
 
-        private ICollection<int> GetCommonLinkIds(string[] searchTerms)
+        private ICollection<int> GetCommonLinkIds(string[] searchTerms, MySqlConnection conn)
         {
-            IEnumerable<int> linkIds = GetLinkIdsForTag(searchTerms[0]);
+            IEnumerable<int> linkIds = GetLinkIdsForTag(searchTerms[0], conn);
 
             for (int i = 1; i < searchTerms.Length; i++)
             {
-                linkIds = linkIds.Intersect(GetLinkIdsForTag(searchTerms[i]));
+                linkIds = linkIds.Intersect(GetLinkIdsForTag(searchTerms[i], conn));
             }
 
             return linkIds.ToList();
         }
 
-        private AdditionalPostData BuildAdditionalPostData(string[] searchTerms)
+        private AdditionalPostData BuildAdditionalPostData(string[] searchTerms, MySqlConnection conn)
         {
             List<string> additionalTagNames = new List<string>();
             List<int> additionalTagIds = new List<int>();
@@ -374,9 +363,9 @@ namespace LobitaBot
             for (int i = 1; i < searchTerms.Length; i++)
             {
                 additionalTagNames.Add(searchTerms[i]);
-                additionalTagIds.Add(LookupTagIdByName(searchTerms[i]));
+                additionalTagIds.Add(LookupTagIdByName(searchTerms[i], conn));
 
-                seriesName = SeriesWithCharacter(searchTerms[i]);
+                seriesName = SeriesWithCharacter(searchTerms[i], conn);
 
                 if (!additionalSeriesNames.Contains(seriesName))
                 {

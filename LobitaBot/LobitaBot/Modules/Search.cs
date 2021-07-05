@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -144,61 +145,66 @@ namespace LobitaBot
 
             DbCharacterIndex charIndex = _characterIndex;
             DbSeriesIndex seriesIndex = _seriesIndex;
-            int id;
-            string tag;
-            string charNameEscaped;
 
-            if (int.TryParse(charName, out id))
+            using (MySqlConnection charConn = _characterIndex.GetConnection())
+            using (MySqlConnection seriesConn = _seriesIndex.GetConnection())
             {
-                tag = charIndex.LookupTagById(id);
+                int id;
+                string tag;
+                string charNameEscaped;
 
-                if (!string.IsNullOrEmpty(tag))
+                if (int.TryParse(charName, out id))
                 {
-                    charName = tag;
-                }
-            }
+                    tag = charIndex.LookupTagById(id, charConn);
 
-            charName = TagParser.Format(charName);
-            charNameEscaped = TagParser.EscapeUnderscore(charName);
-
-            string series = charIndex.SeriesWithCharacter(charName);
-            List<string> seriesList = new List<string>();
-
-            seriesList.Add(series);
-
-            if (!string.IsNullOrEmpty(series))
-            {
-                if (seriesList.Count < MaxSearchResults)
-                {
-                    List<TagData> seriesData = seriesIndex.LookupTagData(seriesList);
-
-                    pages = TagParser.CompileSuggestions(seriesData, EmbedBuilder.MaxFieldCount);
-
-                    EmbedBuilder embed = BuildSuggestionsEmbed(pages);
-
-                    if (embed != null)
+                    if (!string.IsNullOrEmpty(tag))
                     {
-                        var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-                        ulong msgId = toSend.Id;
-                        PageData pageData = new PageData(pages);
+                        charName = tag;
+                    }
+                }
 
-                        _pageService.AddLimited(msgId, pageData);
+                charName = TagParser.Format(charName);
+                charNameEscaped = TagParser.EscapeUnderscore(charName);
 
-                        await toSend.AddReactionAsync(Constants.PageBack);
-                        await toSend.AddReactionAsync(Constants.PageForward);
-                        await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                        await toSend.AddReactionAsync(Constants.SortNumerical);
-                        await toSend.AddReactionAsync(Constants.ChangeOrder);
+                string series = charIndex.SeriesWithCharacter(charName, charConn);
+                List<string> seriesList = new List<string>();
+
+                seriesList.Add(series);
+
+                if (!string.IsNullOrEmpty(series))
+                {
+                    if (seriesList.Count < MaxSearchResults)
+                    {
+                        List<TagData> seriesData = seriesIndex.LookupTagData(seriesList, seriesConn);
+
+                        pages = TagParser.CompileSuggestions(seriesData, EmbedBuilder.MaxFieldCount);
+
+                        EmbedBuilder embed = BuildSuggestionsEmbed(pages);
+
+                        if (embed != null)
+                        {
+                            var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
+                            ulong msgId = toSend.Id;
+                            PageData pageData = new PageData(pages);
+
+                            _pageService.AddLimited(msgId, pageData);
+
+                            await toSend.AddReactionAsync(Constants.PageBack);
+                            await toSend.AddReactionAsync(Constants.PageForward);
+                            await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                            await toSend.AddReactionAsync(Constants.SortNumerical);
+                            await toSend.AddReactionAsync(Constants.ChangeOrder);
+                        }
+                    }
+                    else
+                    {
+                        await ReplyAsync(ExcessiveResults.Replace("%", charNameEscaped));
                     }
                 }
                 else
                 {
-                    await ReplyAsync(ExcessiveResults.Replace("%", charNameEscaped));
+                    await ReplyAsync(NoResults.Replace("%", charNameEscaped));
                 }
-            }
-            else
-            {
-                await ReplyAsync(NoResults.Replace("%", charNameEscaped));
             }
         }
 
@@ -221,58 +227,63 @@ namespace LobitaBot
 
             DbSeriesIndex seriesIndex = _seriesIndex;
             DbCharacterIndex charIndex = _characterIndex;
-            int id;
-            string tag;
-            string seriesNameEscaped;
 
-            if (int.TryParse(seriesName, out id))
+            using (MySqlConnection charConn = _characterIndex.GetConnection())
+            using (MySqlConnection seriesConn = _seriesIndex.GetConnection())
             {
-                tag = seriesIndex.LookupTagById(id);
+                int id;
+                string tag;
+                string seriesNameEscaped;
 
-                if (!string.IsNullOrEmpty(tag))
+                if (int.TryParse(seriesName, out id))
                 {
-                    seriesName = tag;
-                }
-            }
+                    tag = seriesIndex.LookupTagById(id, seriesConn);
 
-            seriesName = TagParser.Format(seriesName);
-            seriesNameEscaped = TagParser.EscapeUnderscore(seriesName);
-
-            List<string> characters = seriesIndex.CharactersInSeries(seriesName);
-
-            if (characters.Count > 0)
-            {
-                if (characters.Count < MaxSearchResults)
-                {
-                    List<TagData> characterData = charIndex.LookupTagData(characters);
-
-                    pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
-
-                    EmbedBuilder embed = BuildSuggestionsEmbed(pages);
-
-                    if (embed != null)
+                    if (!string.IsNullOrEmpty(tag))
                     {
-                        var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
-                        ulong msgId = toSend.Id;
-                        PageData pageData = new PageData(pages);
+                        seriesName = tag;
+                    }
+                }
 
-                        _pageService.AddLimited(msgId, pageData);
+                seriesName = TagParser.Format(seriesName);
+                seriesNameEscaped = TagParser.EscapeUnderscore(seriesName);
 
-                        await toSend.AddReactionAsync(Constants.PageBack);
-                        await toSend.AddReactionAsync(Constants.PageForward);
-                        await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                        await toSend.AddReactionAsync(Constants.SortNumerical);
-                        await toSend.AddReactionAsync(Constants.ChangeOrder);
+                List<string> characters = seriesIndex.CharactersInSeries(seriesName, seriesConn);
+
+                if (characters.Count > 0)
+                {
+                    if (characters.Count < MaxSearchResults)
+                    {
+                        List<TagData> characterData = charIndex.LookupTagData(characters, charConn);
+
+                        pages = TagParser.CompileSuggestions(characterData, EmbedBuilder.MaxFieldCount);
+
+                        EmbedBuilder embed = BuildSuggestionsEmbed(pages);
+
+                        if (embed != null)
+                        {
+                            var toSend = await Context.Channel.SendMessageAsync(embed: embed.Build());
+                            ulong msgId = toSend.Id;
+                            PageData pageData = new PageData(pages);
+
+                            _pageService.AddLimited(msgId, pageData);
+
+                            await toSend.AddReactionAsync(Constants.PageBack);
+                            await toSend.AddReactionAsync(Constants.PageForward);
+                            await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                            await toSend.AddReactionAsync(Constants.SortNumerical);
+                            await toSend.AddReactionAsync(Constants.ChangeOrder);
+                        }
+                    }
+                    else
+                    {
+                        await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
                     }
                 }
                 else
                 {
-                    await ReplyAsync(ExcessiveResults.Replace("%", seriesNameEscaped));
+                    await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
                 }
-            }
-            else
-            {
-                await ReplyAsync(NoResults.Replace("%", seriesNameEscaped));
             }
         }
 
@@ -364,90 +375,93 @@ namespace LobitaBot
 
             DbCharacterIndex charIndex = _characterIndex;
 
-            int id;
-            string tag;
-            string matchedName;
-
-            for (int i = 0; i < searchTerms.Length; i++)
+            using (MySqlConnection charConn = _characterIndex.GetConnection())
             {
-                if (int.TryParse(searchTerms[i], out id))
-                {
-                    tag = charIndex.LookupTagById(id);
+                int id;
+                string tag;
+                string matchedName;
 
-                    if (!string.IsNullOrEmpty(tag))
+                for (int i = 0; i < searchTerms.Length; i++)
+                {
+                    if (int.TryParse(searchTerms[i], out id))
                     {
-                        searchTerms[i] = tag;
+                        tag = charIndex.LookupTagById(id, charConn);
+
+                        if (!string.IsNullOrEmpty(tag))
+                        {
+                            searchTerms[i] = tag;
+                        }
+                    }
+
+                    searchTerms[i] = TagParser.Format(searchTerms[i]);
+
+                    if (!charIndex.HasExactMatch(searchTerms[i], charConn, out matchedName))
+                    {
+                        await ReplyAsync($"Character name '{TagParser.EscapeUnderscore(searchTerms[i])}' could not be found.");
+
+                        return null;
+                    }
+                    else
+                    {
+                        searchTerms[i] = matchedName;
                     }
                 }
 
-                searchTerms[i] = TagParser.Format(searchTerms[i]);
+                EmbedBuilder embed;
 
-                if (!charIndex.HasExactMatch(searchTerms[i], out matchedName))
+                if (wildcardLastArg)
                 {
-                    await ReplyAsync($"Character name '{TagParser.EscapeUnderscore(searchTerms[i])}' could not be found.");
+                    List<string> furtherCollabs = charIndex.CollabsWithCharacters(searchTerms, charConn);
 
-                    return null;
+                    if (furtherCollabs.Count == 0)
+                    {
+                        await ReplyAsync($"No further collabs with the specified character(s) exist.");
+
+                        return null;
+                    }
+
+                    List<TagData> tagData = charIndex.LookupTagData(furtherCollabs, charConn);
+
+                    pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+                    embed = BuildSuggestionsEmbed(pages);
                 }
                 else
                 {
-                    searchTerms[i] = matchedName;
+                    PostData postData = null;
+
+                    switch (rollSequence)
+                    {
+                        case ROLL_SEQUENCE.RANDOM:
+                            postData = charIndex.LookupRandomCollab(searchTerms, charConn);
+                            break;
+                        case ROLL_SEQUENCE.PREVIOUS:
+                            postData = charIndex.LookupPreviousCollab(searchTerms, postId, charConn);
+                            break;
+                        case ROLL_SEQUENCE.NEXT:
+                            postData = charIndex.LookupNextCollab(searchTerms, postId, charConn);
+                            break;
+                    }
+
+                    string embedDescription = rerollCollabDescription + "." +
+                        Environment.NewLine +
+                        listCharactersDescription + ".";
+
+                    embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
+
+                    if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                    {
+                        embed = BuildImageEmbed(postData, embedDescription);
+                    }
+                    else
+                    {
+                        await ReplyAsync($"No images found for this collab.");
+
+                        return null;
+                    }
                 }
+
+                return embed;
             }
-
-            EmbedBuilder embed;
-
-            if (wildcardLastArg)
-            {
-                List<string> furtherCollabs = charIndex.CollabsWithCharacters(searchTerms);
-
-                if (furtherCollabs.Count == 0)
-                {
-                    await ReplyAsync($"No further collabs with the specified character(s) exist.");
-
-                    return null;
-                }
-
-                List<TagData> tagData = charIndex.LookupTagData(furtherCollabs);
-
-                pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
-                embed = BuildSuggestionsEmbed(pages);
-            }
-            else
-            {
-                PostData postData = null;
-
-                switch (rollSequence)
-                {
-                    case ROLL_SEQUENCE.RANDOM:
-                        postData = charIndex.LookupRandomCollab(searchTerms);
-                        break;
-                    case ROLL_SEQUENCE.PREVIOUS:
-                        postData = charIndex.LookupPreviousCollab(searchTerms, postId);
-                        break;
-                    case ROLL_SEQUENCE.NEXT:
-                        postData = charIndex.LookupNextCollab(searchTerms, postId);
-                        break;
-                }
-
-                string embedDescription = rerollCollabDescription + "." +
-                    Environment.NewLine +
-                    listCharactersDescription + ".";
-
-                embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-
-                if (postData != null && !string.IsNullOrEmpty(postData.Link))
-                {
-                    embed = BuildImageEmbed(postData, embedDescription);
-                }
-                else
-                {
-                    await ReplyAsync($"No images found for this collab.");
-
-                    return null;
-                }
-            }
-
-            return embed;
         }
 
         private async Task<EmbedBuilder> SearchAsync(string searchTerm, CATEGORY category, ITagIndex tagIndex, int postIndex = 0, ROLL_SEQUENCE rollSequence = ROLL_SEQUENCE.RANDOM)
@@ -491,78 +505,81 @@ namespace LobitaBot
                 Environment.NewLine +
                 listCharactersDescription +".";
 
-            if (int.TryParse(searchTerm, out id))
+            using (MySqlConnection conn = tagIndex.GetConnection())
             {
-                tag = tagIndex.LookupTagById(id);
-
-                if (!string.IsNullOrEmpty(tag))
+                if (int.TryParse(searchTerm, out id))
                 {
-                    searchTerm = tag;
-                }
-            }
+                    tag = tagIndex.LookupTagById(id, conn);
 
-            searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
-
-            if (tagIndex.HasExactMatch(searchTerm, out searchTermMatched))
-            {
-                switch (rollSequence)
-                {
-                    case ROLL_SEQUENCE.RANDOM:
-                        postData = tagIndex.LookupRandomPost(searchTermMatched);
-                        break;
-                    case ROLL_SEQUENCE.PREVIOUS:
-                        postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex);
-                        break;
-                    case ROLL_SEQUENCE.NEXT:
-                        postData = tagIndex.LookupNextPost(searchTermMatched, postIndex);
-                        break;
-                }
-
-                switch (category)
-                {
-                    case CATEGORY.CHARACTER:
-                        embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
-                        break;
-                }
-
-                if (postData != null && !string.IsNullOrEmpty(postData.Link))
-                {
-                    embed = BuildImageEmbed(postData, embedDescription);
-                }
-                else
-                {
-                    await ReplyAsync(NoImages.Replace("%", searchTermEscaped));
-
-                    return null;
-                }
-            }
-            else
-            {
-                embed = new EmbedBuilder();
-                tags = tagIndex.LookupTags(searchTerm);
-
-                if (tags.Count > 0)
-                {
-                    if (tags.Count > MaxSearchResults)
+                    if (!string.IsNullOrEmpty(tag))
                     {
-                        await ReplyAsync(ExcessiveResults.Replace("%", searchTerm));
+                        searchTerm = tag;
+                    }
+                }
+
+                searchTermEscaped = TagParser.EscapeUnderscore(searchTerm);
+
+                if (tagIndex.HasExactMatch(searchTerm, conn, out searchTermMatched))
+                {
+                    switch (rollSequence)
+                    {
+                        case ROLL_SEQUENCE.RANDOM:
+                            postData = tagIndex.LookupRandomPost(searchTermMatched, conn);
+                            break;
+                        case ROLL_SEQUENCE.PREVIOUS:
+                            postData = tagIndex.LookupPreviousPost(searchTermMatched, postIndex, conn);
+                            break;
+                        case ROLL_SEQUENCE.NEXT:
+                            postData = tagIndex.LookupNextPost(searchTermMatched, postIndex, conn);
+                            break;
+                    }
+
+                    switch (category)
+                    {
+                        case CATEGORY.CHARACTER:
+                            embedDescription += Environment.NewLine + cycleCharacterPageDescription + ".";
+                            break;
+                    }
+
+                    if (postData != null && !string.IsNullOrEmpty(postData.Link))
+                    {
+                        embed = BuildImageEmbed(postData, embedDescription);
+                    }
+                    else
+                    {
+                        await ReplyAsync(NoImages.Replace("%", searchTermEscaped));
 
                         return null;
                     }
-
-                    tagData = tagIndex.LookupTagData(tags);
-                    pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
-                    embed = BuildSuggestionsEmbed(pages);
                 }
                 else
                 {
-                    await ReplyAsync(NoResults.Replace("%", searchTermEscaped));
+                    embed = new EmbedBuilder();
+                    tags = tagIndex.LookupTags(searchTerm, conn);
 
-                    return null;
+                    if (tags.Count > 0)
+                    {
+                        if (tags.Count > MaxSearchResults)
+                        {
+                            await ReplyAsync(ExcessiveResults.Replace("%", searchTerm));
+
+                            return null;
+                        }
+
+                        tagData = tagIndex.LookupTagData(tags, conn);
+                        pages = TagParser.CompileSuggestions(tagData, EmbedBuilder.MaxFieldCount);
+                        embed = BuildSuggestionsEmbed(pages);
+                    }
+                    else
+                    {
+                        await ReplyAsync(NoResults.Replace("%", searchTermEscaped));
+
+                        return null;
+                    }
                 }
-            }
 
-            return embed;
+                return embed;
+            }
         }
 
         private async Task<EmbedBuilder> RandomPostAsync()
@@ -574,37 +591,41 @@ namespace LobitaBot
             }
 
             DbCharacterIndex characterIndex = _characterIndex;
-            EmbedBuilder embed;
-            PostData postData;
-            string tag = characterIndex.LookupRandomTag();
-            string title;
 
-            if (!string.IsNullOrEmpty(tag))
+            using (MySqlConnection conn = _characterIndex.GetConnection())
             {
-                title = TagParser.BuildTitle(tag);
-                postData = characterIndex.LookupRandomPost(tag);
+                EmbedBuilder embed;
+                PostData postData;
+                string tag = characterIndex.LookupRandomTag(conn);
+                string title;
 
-                while (postData == null)
+                if (!string.IsNullOrEmpty(tag))
                 {
-                    tag = characterIndex.LookupRandomTag();
                     title = TagParser.BuildTitle(tag);
-                    postData = characterIndex.LookupRandomPost(tag);
+                    postData = characterIndex.LookupRandomPost(tag, conn);
+
+                    while (postData == null)
+                    {
+                        tag = characterIndex.LookupRandomTag(conn);
+                        title = TagParser.BuildTitle(tag);
+                        postData = characterIndex.LookupRandomPost(tag, conn);
+                    }
+
+                    string embedDescription = rerollRandomDescription + "." +
+                        Environment.NewLine +
+                        listCharactersDescription + ".";
+
+                    embed = BuildImageEmbed(postData, embedDescription);
+                }
+                else
+                {
+                    await ReplyAsync("An error occurred during random tag lookup.");
+
+                    return null;
                 }
 
-                string embedDescription =  rerollRandomDescription + "." +
-                    Environment.NewLine +
-                    listCharactersDescription + ".";
-
-                embed = BuildImageEmbed(postData, embedDescription);
+                return embed;
             }
-            else
-            {
-                await ReplyAsync("An error occurred during random tag lookup.");
-
-                return null;
-            }
-
-            return embed;
         }
 
         private EmbedBuilder BuildImageEmbed(PostData postData, string embedDescription)
@@ -877,23 +898,27 @@ namespace LobitaBot
             else if (reaction.Emote.Name == Constants.Characters.Name)
             {
                 DbCharacterIndex charIndex = _characterIndex;
-                List<string> charsInPost = charIndex.CharactersInPost(int.Parse(embedFields[1].Value));
-                List<TagData> charData = charIndex.LookupTagData(charsInPost);
 
-                pages = TagParser.CompileSuggestions(charData, EmbedBuilder.MaxFieldCount);
-                pageData = new PageData(pages);
+                using (MySqlConnection conn = _characterIndex.GetConnection())
+                {
+                    List<string> charsInPost = charIndex.CharactersInPost(int.Parse(embedFields[1].Value), conn);
+                    List<TagData> charData = charIndex.LookupTagData(charsInPost, conn);
 
-                embedBuilder = BuildSuggestionsEmbed(pages);
-                var toSend = await channel.SendMessageAsync(embed: embedBuilder.Build());
-                ulong msgId = toSend.Id;
+                    pages = TagParser.CompileSuggestions(charData, EmbedBuilder.MaxFieldCount);
+                    pageData = new PageData(pages);
 
-                _pageService.AddLimited(msgId, pageData);
+                    embedBuilder = BuildSuggestionsEmbed(pages);
+                    var toSend = await channel.SendMessageAsync(embed: embedBuilder.Build());
+                    ulong msgId = toSend.Id;
 
-                await toSend.AddReactionAsync(Constants.PageBack);
-                await toSend.AddReactionAsync(Constants.PageForward);
-                await toSend.AddReactionAsync(Constants.SortAlphabetical);
-                await toSend.AddReactionAsync(Constants.SortNumerical);
-                await toSend.AddReactionAsync(Constants.ChangeOrder);
+                    _pageService.AddLimited(msgId, pageData);
+
+                    await toSend.AddReactionAsync(Constants.PageBack);
+                    await toSend.AddReactionAsync(Constants.PageForward);
+                    await toSend.AddReactionAsync(Constants.SortAlphabetical);
+                    await toSend.AddReactionAsync(Constants.SortNumerical);
+                    await toSend.AddReactionAsync(Constants.ChangeOrder);
+                }
 
             }
             else if (reaction.Emote.Name == Constants.RerollRandom.Name)
