@@ -1,9 +1,8 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using LobitaBot.Utils;
+using LobitaBot.Reactions;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace LobitaBot
@@ -28,8 +27,7 @@ namespace LobitaBot
             cmdService = new CommandService();
             client.Log += Log;
             cmdService.Log += Log;
-            var generator = new RandomPostGenerator(); 
-            client.ReactionAdded += generator.ReactionAdded_Event;
+            client.ReactionAdded += ReactionRegistry.ReactionAdded_Event;
 
             CommandHandler cmdHandler = new CommandHandler(client, cmdService);
             await cmdHandler.InstallCommandsAsync();

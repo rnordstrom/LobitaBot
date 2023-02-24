@@ -20,13 +20,7 @@ namespace LobitaBot
         public async Task HelpAsync()
         {
             EmbedBuilder builder = new EmbedBuilder()
-                .WithTitle("LobitaBot Commands")
-                .WithDescription("Character and series search commands use the %-symbol as a wildcard. " +
-                    Environment.NewLine +
-                    "Use the symbol anywhere in a search string to match any string of characters " +
-                    "before, after or amidst the search string. Multiple %-symbols may be used." +
-                    Environment.NewLine +
-                    "Examples: %aber, hol%, me%llis, od%_%ga");
+                .WithTitle("LobitaBot Commands");
             List<EmbedFieldBuilder> fields = new List<EmbedFieldBuilder>();
 
             foreach (var module in _commandService.Modules)
