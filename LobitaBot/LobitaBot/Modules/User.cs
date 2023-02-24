@@ -43,7 +43,6 @@ namespace LobitaBot
             }
 
             embed.WithAuthor(Context.Client.CurrentUser)
-                .WithFooter(footer => footer.Text = Constants.FooterText + Context.User.Username)
                 .WithColor(Color.DarkGrey)
                 .WithCurrentTimestamp();
 

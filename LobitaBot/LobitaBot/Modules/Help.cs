@@ -10,11 +10,6 @@ namespace LobitaBot
     {
         private readonly CommandService _commandService;
 
-        public Help(VideoService vs, CommandService cs)
-        {
-            _commandService = cs;
-        }
-
         [Command("help")]
         [Summary("Display a list of available commands.")]
         public async Task HelpAsync()
