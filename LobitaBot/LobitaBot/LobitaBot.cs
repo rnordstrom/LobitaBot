@@ -14,7 +14,7 @@ namespace LobitaBot
     {
         public const string Prefix = "oka.";
         public static Emoji RerollRandom = new Emoji("🔄");
-        public const string PostsUrlBase = "https://danbooru.donmai.us/posts/random.xml?tags=rating:safe";
+        public const string PostsUrlBase = "https://danbooru.donmai.us/posts/random.xml?tags=rating:general";
         public const string RandomImageTitle = "Random Image";
         public static string ApiUser = ConfigurationManager.AppSettings.Get("API-USER");
         public static string ApiKey;
