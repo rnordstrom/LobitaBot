@@ -13,6 +13,7 @@ namespace LobitaBot.Reactions
             var msg = message.GetOrDownloadAsync().Result;
             IEmbed msgEmbed = msg.Embeds.First();
             var searchTerm = msgEmbed.Title;
+            searchTerm = searchTerm.Replace(@"\", "");
 
             if (reaction.UserId == msg.Author.Id)
             {
