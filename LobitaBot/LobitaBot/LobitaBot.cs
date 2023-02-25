@@ -11,6 +11,7 @@ namespace LobitaBot
     {
         public const string Prefix = "oka.";
         public static Emoji RerollRandom = new Emoji("🔄");
+        public const string PostsUrlBase = "https://danbooru.donmai.us/posts/random.xml?tags=rating:safe";
     }
 
     class LobitaBot

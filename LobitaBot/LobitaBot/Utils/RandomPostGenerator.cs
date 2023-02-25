@@ -7,9 +7,9 @@ namespace LobitaBot.Utils
 {
     class RandomPostGenerator
     {
-        public Embed RandomPost(string tags)
+        public Embed RandomPost(string tags, string url)
         {
-            var result = HttpXmlService.GetRequestXml(tags);
+            var result = HttpXmlService.GetRequestXml(url);
 
             if (result == null)
             {
@@ -27,16 +27,16 @@ namespace LobitaBot.Utils
             string created = root.SelectSingleNode("created-at").InnerText;
             DateTime parsed = DateTime.Parse(created);
             var embedBuilder = new EmbedBuilder()
-                .WithTitle(tags)
-                .WithDescription(description)
+                .WithTitle(Format.Sanitize(tags))
+                .WithDescription(Format.Sanitize(description))
                 .WithImageUrl(imageUrl)
                 .WithUrl(imageUrl)
                 .WithColor(Color.DarkGrey)
                 .WithCurrentTimestamp()
                 .WithFooter("Created on " + parsed.ToLongDateString())
-                .AddField("Characters", characters)
-                .AddField("Artist", artist)
-                .AddField("Series", series);
+                .AddField("Characters", Format.Sanitize(characters))
+                .AddField("Artist", Format.Sanitize(artist))
+                .AddField("Series", Format.Sanitize(series));
 
             return embedBuilder.Build();
         }

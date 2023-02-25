@@ -22,7 +22,8 @@ namespace LobitaBot.Reactions
             if (reaction.Emote.Name == Constants.RerollRandom.Name)
             {
                 var generator = new RandomPostGenerator();
-                var embed = generator.RandomPost(searchTerm);
+                var url = $"{Constants.PostsUrlBase} {searchTerm}";
+                var embed = generator.RandomPost(searchTerm, url);
 
                 if (embed != null)
                 {

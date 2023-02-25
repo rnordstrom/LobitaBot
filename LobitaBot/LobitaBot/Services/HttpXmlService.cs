@@ -7,10 +7,8 @@ namespace LobitaBot.Services
 {
     public static class HttpXmlService
     {
-        public static string GetRequestXml(string tags)
+        public static string GetRequestXml(string url)
         {
-            var url = $"https://danbooru.donmai.us/posts/random.xml?tags={tags} rating:safe";
-
             var httpRequest = (HttpWebRequest)WebRequest.Create(url);
             var username = Environment.GetEnvironmentVariable("API_USER");
             var key = Environment.GetEnvironmentVariable("API_KEY");
@@ -20,7 +18,8 @@ namespace LobitaBot.Services
             httpRequest.Headers["User-Agent"] = username;
             httpRequest.Headers["Authorization"] = $"Basic {credentials}";
 
-            try {
+            try 
+            {
                 var httpResponse = (HttpWebResponse)httpRequest.GetResponse();
 
                 using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
