@@ -18,8 +18,6 @@ namespace LobitaBot
             this.commands = commands;
             this.client = client;
             services = new ServiceCollection()
-                .AddSingleton<VideoService>()
-                .AddSingleton<PageService>()
                 .BuildServiceProvider();
 
             this.client.SetGameAsync("oka.help");
