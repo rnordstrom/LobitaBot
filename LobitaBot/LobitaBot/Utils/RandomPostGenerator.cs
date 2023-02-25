@@ -19,6 +19,7 @@ namespace LobitaBot.Utils
             XmlDocument doc = new XmlDocument();
             doc.LoadXml(result);
             XmlElement root = doc.DocumentElement;
+
             string imageUrl = root.SelectSingleNode("file-url").InnerText;
             string description = root.SelectSingleNode("tag-string-general").InnerText;
             string series = root.SelectSingleNode("tag-string-copyright").InnerText;
@@ -26,7 +27,13 @@ namespace LobitaBot.Utils
             string artist = root.SelectSingleNode("tag-string-artist").InnerText;
             string created = root.SelectSingleNode("created-at").InnerText;
             DateTime parsed = DateTime.Parse(created);
-            string title = tags == null ? Constants.RandomImageTitle : Format.Sanitize(tags);
+            string title = tags == null ? Literals.RandomImageTitle : Format.Sanitize(tags);
+
+            description = string.IsNullOrEmpty(description) ? Literals.NotAvailable : description;
+            series = string.IsNullOrEmpty(series) ? Literals.NotAvailable : series;
+            artist = string.IsNullOrEmpty(artist) ? Literals.NotAvailable : artist;
+            characters = string.IsNullOrEmpty(characters) ? Literals.NotAvailable : characters;
+
             var embedBuilder = new EmbedBuilder()
                 .WithTitle(title)
                 .WithDescription(Format.Sanitize(description))
