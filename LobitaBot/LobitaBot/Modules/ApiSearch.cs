@@ -12,7 +12,7 @@ namespace LobitaBot.Modules
     {
         [Command("random")]
         [Summary("Rolls a random image (safe).")]
-        public async Task RandomAsync([Remainder] string tags)
+        public async Task RandomAsync([Remainder] string tags = null)
         {
             var url = $"{Constants.PostsUrlBase} {tags}";
             var generator = new RandomPostGenerator();

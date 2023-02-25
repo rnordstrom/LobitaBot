@@ -26,8 +26,9 @@ namespace LobitaBot.Utils
             string artist = root.SelectSingleNode("tag-string-artist").InnerText;
             string created = root.SelectSingleNode("created-at").InnerText;
             DateTime parsed = DateTime.Parse(created);
+            string title = tags == null ? Constants.RandomImageTitle : Format.Sanitize(tags);
             var embedBuilder = new EmbedBuilder()
-                .WithTitle(Format.Sanitize(tags))
+                .WithTitle(title)
                 .WithDescription(Format.Sanitize(description))
                 .WithImageUrl(imageUrl)
                 .WithUrl(imageUrl)
