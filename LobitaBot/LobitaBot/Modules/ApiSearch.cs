@@ -49,7 +49,8 @@ namespace LobitaBot.Modules
             foreach (XmlNode tag in tags)
             {
                 string name = tag.SelectSingleNode("name").InnerText;
-                stringBuilder.Append($"{i++}. {Format.Sanitize(name)}\n");
+                string postCount = tag.SelectSingleNode("post-count").InnerText;
+                stringBuilder.Append($"{i++}. {Format.Sanitize(name)} ({postCount})\n");
 
                 if (i > 20)
                 {
