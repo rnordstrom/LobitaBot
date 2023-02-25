@@ -348,3 +348,5 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/LobitaBot/LobitaBot/Properties/ServiceDependencies/LobitaBot20230225165613 - Web Deploy/profile.arm.json
+/LobitaBot/LobitaBot/Settings.job

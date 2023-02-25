@@ -4,6 +4,9 @@ using Discord.WebSocket;
 using LobitaBot.Reactions;
 using System;
 using System.Threading.Tasks;
+using System.Configuration;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 namespace LobitaBot
 {
@@ -13,11 +16,13 @@ namespace LobitaBot
         public static Emoji RerollRandom = new Emoji("🔄");
         public const string PostsUrlBase = "https://danbooru.donmai.us/posts/random.xml?tags=rating:safe";
         public const string RandomImageTitle = "Random Image";
+        public static string ApiUser = ConfigurationManager.AppSettings.Get("API-USER");
+        public static string ApiKey;
     }
 
     class LobitaBot
     {
-        private DiscordSocketClient client;
+        private DiscordSocketClient socketClient;
         private CommandService cmdService;
 
         public static void Main(string[] args)
@@ -25,19 +30,34 @@ namespace LobitaBot
 
         public async Task MainAsync()
         {
-            client = new DiscordSocketClient();
+            socketClient = new DiscordSocketClient();
             cmdService = new CommandService();
-            client.Log += Log;
+            socketClient.Log += Log;
             cmdService.Log += Log;
-            client.ReactionAdded += ReactionRegistry.ReactionAdded_Event;
+            socketClient.ReactionAdded += ReactionRegistry.ReactionAdded_Event;
 
-            CommandHandler cmdHandler = new CommandHandler(client, cmdService);
+            CommandHandler cmdHandler = new CommandHandler(socketClient, cmdService);
             await cmdHandler.InstallCommandsAsync();
 
-            var token = Environment.GetEnvironmentVariable("token");
+            SecretClientOptions options = new SecretClientOptions()
+            {
+                Retry =
+                {
+                    Delay= TimeSpan.FromSeconds(2),
+                    MaxDelay = TimeSpan.FromSeconds(16),
+                    MaxRetries = 5,
+                    Mode = Azure.Core.RetryMode.Exponential
+                 }
+            };
 
-            await client.LoginAsync(TokenType.Bot, token);
-            await client.StartAsync();
+            var client = new SecretClient(new Uri("https://lobitakeys.vault.azure.net/"), new DefaultAzureCredential(), options);
+            KeyVaultSecret tokenSecret = client.GetSecret("token");
+            KeyVaultSecret apiSecret = client.GetSecret("API-KEY");
+            var token = tokenSecret.Value;
+            Constants.ApiKey = apiSecret.Value;
+
+            await socketClient.LoginAsync(TokenType.Bot, token);
+            await socketClient.StartAsync();
 
             await Task.Delay(-1);
         }
