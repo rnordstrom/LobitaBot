@@ -10,12 +10,13 @@ using Azure.Security.KeyVault.Secrets;
 
 namespace LobitaBot
 {
-    public class Constants
+    public class Literals
     {
         public const string Prefix = "oka.";
         public static Emoji RerollRandom = new Emoji("🔄");
         public const string PostsUrlBase = "https://danbooru.donmai.us/posts/random.xml?tags=rating:general";
         public const string RandomImageTitle = "Random Image";
+        public const string NotAvailable = "n/a";
         public static string ApiUser = ConfigurationManager.AppSettings.Get("API-USER");
         public static string ApiKey;
     }
@@ -54,7 +55,7 @@ namespace LobitaBot
             KeyVaultSecret tokenSecret = client.GetSecret("token");
             KeyVaultSecret apiSecret = client.GetSecret("API-KEY");
             var token = tokenSecret.Value;
-            Constants.ApiKey = apiSecret.Value;
+            Literals.ApiKey = apiSecret.Value;
 
             await socketClient.LoginAsync(TokenType.Bot, token);
             await socketClient.StartAsync();

@@ -20,11 +20,11 @@ namespace LobitaBot.Reactions
                 return;
             }
 
-            if (reaction.Emote.Name == Constants.RerollRandom.Name)
+            if (reaction.Emote.Name == Literals.RerollRandom.Name)
             {
-                searchTerm = searchTerm == Constants.RandomImageTitle ? null : searchTerm;
+                searchTerm = searchTerm == Literals.RandomImageTitle ? null : searchTerm;
                 var generator = new RandomPostGenerator();
-                var url = $"{Constants.PostsUrlBase} {searchTerm}";
+                var url = $"{Literals.PostsUrlBase} {searchTerm}";
                 var embed = generator.RandomPost(searchTerm, url);
 
                 if (embed != null)
@@ -33,7 +33,7 @@ namespace LobitaBot.Reactions
 
                     if (embed.Image != null)
                     {
-                        await toSend.AddReactionAsync(Constants.RerollRandom);
+                        await toSend.AddReactionAsync(Literals.RerollRandom);
                     }
                 }
             }

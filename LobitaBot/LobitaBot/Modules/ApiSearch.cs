@@ -14,7 +14,7 @@ namespace LobitaBot.Modules
         [Summary("Rolls a random image (safe).")]
         public async Task RandomAsync([Remainder] string tags = null)
         {
-            var url = $"{Constants.PostsUrlBase} {tags}";
+            var url = $"{Literals.PostsUrlBase} {tags}";
             var generator = new RandomPostGenerator();
             var embed = generator.RandomPost(tags, url);
 
@@ -24,7 +24,7 @@ namespace LobitaBot.Modules
             }
 
             var toSend = await Context.Channel.SendMessageAsync(embed: embed);
-            await toSend.AddReactionAsync(Constants.RerollRandom);
+            await toSend.AddReactionAsync(Literals.RerollRandom);
         }
 
         [Command("tag")]

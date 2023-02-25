@@ -39,7 +39,7 @@ namespace LobitaBot
                             parameters += $"{pi.Name} ";
                         }
 
-                        field.WithName($"{Constants.Prefix}{cmd.Name} {parameters}");
+                        field.WithName($"{Literals.Prefix}{cmd.Name} {parameters}");
                         field.WithValue(cmd.Summary);
                         fields.Add(field);
                     }

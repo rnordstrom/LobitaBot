@@ -45,7 +45,7 @@ namespace LobitaBot
             int argPos = 3;
 
             // Determine if the message is a command based on the prefix and make sure no bots trigger commands
-            if (!(message.HasStringPrefix(Constants.Prefix, ref argPos) ||
+            if (!(message.HasStringPrefix(Literals.Prefix, ref argPos) ||
                 message.HasMentionPrefix(client.CurrentUser, ref argPos)) ||
                 message.Author.IsBot)
             {

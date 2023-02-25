@@ -10,8 +10,8 @@ namespace LobitaBot.Services
         public static string GetRequestXml(string url)
         {
             var httpRequest = (HttpWebRequest)WebRequest.Create(url.Trim());
-            var username = Constants.ApiUser;
-            var key = Constants.ApiKey;
+            var username = Literals.ApiUser;
+            var key = Literals.ApiKey;
             var encoding = Encoding.GetEncoding("iso-8859-1").GetBytes($"{username}:{key}");
             var credentials = Convert.ToBase64String(encoding);
 
