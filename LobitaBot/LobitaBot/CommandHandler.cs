@@ -1,5 +1,6 @@
 ﻿using Discord.Commands;
 using Discord.WebSocket;
+using LobitaBot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Reflection;

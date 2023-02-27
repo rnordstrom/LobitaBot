@@ -5,8 +5,7 @@ using LobitaBot.Reactions;
 using System;
 using System.Threading.Tasks;
 using System.Configuration;
-using Azure.Identity;
-using Azure.Security.KeyVault.Secrets;
+using LobitaBot.Services;
 
 namespace LobitaBot
 {
@@ -14,7 +13,8 @@ namespace LobitaBot
     {
         public const string Prefix = "oka.";
         public static Emoji RerollRandom = new Emoji("🔄");
-        public const string PostsUrlBase = "https://danbooru.donmai.us/posts/random.xml?tags=rating:general";
+        public const string UrlBase = "https://danbooru.donmai.us/";
+        public const string PostsBase = "posts/random.xml?tags=rating:general";
         public const string RandomImageTitle = "Random Image";
         public const string NotAvailable = "n/a";
         public static string ApiUser = ConfigurationManager.AppSettings.Get("API-USER");
@@ -31,6 +31,11 @@ namespace LobitaBot
 
         public async Task MainAsync()
         {
+            var token = Environment.GetEnvironmentVariable("token");
+            Literals.ApiKey = Environment.GetEnvironmentVariable("API_KEY");
+
+            HttpXmlService.Initialize();
+
             socketClient = new DiscordSocketClient();
             cmdService = new CommandService();
             socketClient.Log += Log;
@@ -39,24 +44,6 @@ namespace LobitaBot
 
             CommandHandler cmdHandler = new CommandHandler(socketClient, cmdService);
             await cmdHandler.InstallCommandsAsync();
-
-            SecretClientOptions options = new SecretClientOptions()
-            {
-                Retry =
-                {
-                    Delay= TimeSpan.FromSeconds(2),
-                    MaxDelay = TimeSpan.FromSeconds(16),
-                    MaxRetries = 5,
-                    Mode = Azure.Core.RetryMode.Exponential
-                 }
-            };
-
-            var client = new SecretClient(new Uri("https://lobitakeys.vault.azure.net/"), new DefaultAzureCredential(), options);
-            KeyVaultSecret tokenSecret = client.GetSecret("token");
-            KeyVaultSecret apiSecret = client.GetSecret("API-KEY");
-            var token = tokenSecret.Value;
-            Literals.ApiKey = apiSecret.Value;
-
             await socketClient.LoginAsync(TokenType.Bot, token);
             await socketClient.StartAsync();
 

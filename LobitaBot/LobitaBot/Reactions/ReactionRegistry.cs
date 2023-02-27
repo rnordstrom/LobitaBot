@@ -24,8 +24,8 @@ namespace LobitaBot.Reactions
             {
                 searchTerm = searchTerm == Literals.RandomImageTitle ? null : searchTerm;
                 var generator = new RandomPostGenerator();
-                var url = $"{Literals.PostsUrlBase} {searchTerm}";
-                var embed = generator.RandomPost(searchTerm, url);
+                var path = $"{Literals.PostsBase} {searchTerm}";
+                var embed = await generator.RandomPost(path, searchTerm);
 
                 if (embed != null)
                 {

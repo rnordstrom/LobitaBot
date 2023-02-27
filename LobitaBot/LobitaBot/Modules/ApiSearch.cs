@@ -14,9 +14,9 @@ namespace LobitaBot.Modules
         [Summary("Rolls a random image (safe).")]
         public async Task RandomAsync([Remainder] string tags = null)
         {
-            var url = $"{Literals.PostsUrlBase} {tags}";
             var generator = new RandomPostGenerator();
-            var embed = generator.RandomPost(tags, url);
+            var path = $"{Literals.PostsBase} {tags}";
+            var embed = await generator.RandomPost(path, tags);
 
             if (embed == null)
             {
@@ -31,8 +31,8 @@ namespace LobitaBot.Modules
         [Summary("Searches for a qualified tag using your input.")]
         public async Task TagAsync(string input)
         {
-            var url = $"https://danbooru.donmai.us/tags.xml?search[name_matches]=*{input}*";
-            var result = HttpXmlService.GetRequestXml(url);
+            var path = $"tags.xml?search[name_matches]=*{input}*";
+            var result = await HttpXmlService.GetRequestXml(path);
 
             if (result == null)
             {
