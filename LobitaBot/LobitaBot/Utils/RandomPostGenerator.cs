@@ -21,6 +21,13 @@ namespace LobitaBot.Utils
             doc.LoadXml(result);
             XmlElement root = doc.DocumentElement;
 
+            var success = root.SelectSingleNode("success");
+
+            if (success != null && success.InnerText == "false")
+            {
+                return null;
+            }
+
             string imageUrl = root.SelectSingleNode("file-url").InnerText;
             string description = root.SelectSingleNode("tag-string-general").InnerText;
             string series = root.SelectSingleNode("tag-string-copyright").InnerText;

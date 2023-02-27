@@ -21,6 +21,8 @@ namespace LobitaBot.Modules
             if (embed == null)
             {
                 await Context.Channel.SendMessageAsync("No results found.");
+
+                return;
             }
 
             var toSend = await Context.Channel.SendMessageAsync(embed: embed);
