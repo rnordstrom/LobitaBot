@@ -1,32 +1,38 @@
 ﻿using System;
-using System.IO;
-using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace LobitaBot.Services
 {
-    public static class HttpXmlService
+    public class HttpXmlService
     {
-        public static string GetRequestXml(string url)
+        private static HttpClient client = new()
         {
-            var httpRequest = (HttpWebRequest)WebRequest.Create(url.Trim());
+            BaseAddress = new Uri(Literals.UrlBase)
+        };
+
+        public static void Initialize() {
             var username = Literals.ApiUser;
             var key = Literals.ApiKey;
             var encoding = Encoding.GetEncoding("iso-8859-1").GetBytes($"{username}:{key}");
             var credentials = Convert.ToBase64String(encoding);
 
-            httpRequest.Headers["User-Agent"] = username;
-            httpRequest.Headers["Authorization"] = $"Basic {credentials}";
+            client.DefaultRequestHeaders.Add("User-Agent", username);
+            client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
+            //client.DefaultRequestHeaders.Add("Accept", "application/xml");
+        }
 
+        public static async Task<string> GetRequestXml(string path)
+        {
             try 
             {
-                var httpResponse = (HttpWebResponse)httpRequest.GetResponse();
+                using var response = await client.GetAsync(path);
 
-                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-                {
-                    return streamReader.ReadToEnd();
-                }
-            } catch (Exception e) {
+                return await response.Content.ReadAsStringAsync();
+            } 
+            catch (Exception e) 
+            {
                 Console.WriteLine(e.Message);
 
                 return null;

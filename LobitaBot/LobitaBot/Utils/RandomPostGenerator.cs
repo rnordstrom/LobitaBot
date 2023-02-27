@@ -1,15 +1,16 @@
 ﻿using Discord;
 using LobitaBot.Services;
 using System;
+using System.Threading.Tasks;
 using System.Xml;
 
 namespace LobitaBot.Utils
 {
     class RandomPostGenerator
     {
-        public Embed RandomPost(string tags, string url)
+        public async Task<Embed> RandomPost(string path, string tags)
         {
-            var result = HttpXmlService.GetRequestXml(url);
+            var result = await HttpXmlService.GetRequestXml(path);
 
             if (result == null)
             {
