@@ -19,6 +19,7 @@ namespace LobitaBot
         public const string NotAvailable = "n/a";
         public static string ApiUser = ConfigurationManager.AppSettings.Get("API-USER");
         public static string ApiKey;
+        public static string GptPath = ConfigurationManager.AppSettings.Get("GPT-PATH");
     }
 
     class LobitaBot
